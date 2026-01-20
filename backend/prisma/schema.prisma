@@ -1,0 +1,298 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model agendas {
+  id              String        @id
+  profissionalId  String
+  diaSemana       Int
+  horaInicio      String
+  horaFim         String
+  duracaoConsulta Int           @default(30)
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime
+  profissionais   profissionais @relation(fields: [profissionalId], references: [id])
+
+  @@index([profissionalId], map: "agendas_profissionalId_fkey")
+}
+
+model clinicas {
+  id            String          @id
+  nome          String
+  cnpj          String?         @unique
+  endereco      String?
+  telefone      String?
+  email         String?
+  logoUrl       String?
+  corPrimaria   String?
+  corSecundaria String?
+  ownerId       String?
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  consultas     consultas[]
+  profissionais profissionais[]
+  pacientes     pacientes[]
+  users         users[]
+  owner         users?          @relation("ClinicaOwner", fields: [ownerId], references: [id])
+
+  @@index([ownerId])
+}
+
+model consultas {
+  id             String           @id
+  pacienteId     String
+  profissionalId String
+  clinicaId      String
+  dataHora       DateTime
+  status         consultas_status @default(AGENDADA)
+  observacoes    String?          @db.Text
+  valor          Float?
+  porConvenio    Boolean          @default(false)
+  nomeConvenio   String?
+  archived       Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime
+  clinicas       clinicas         @relation(fields: [clinicaId], references: [id])
+  pacientes      pacientes        @relation(fields: [pacienteId], references: [id])
+  profissionais  profissionais    @relation(fields: [profissionalId], references: [id])
+  prescricoes    prescricoes[]
+  prontuarios    prontuarios?
+
+  @@index([clinicaId], map: "consultas_clinicaId_fkey")
+  @@index([dataHora])
+  @@index([pacienteId])
+  @@index([profissionalId])
+}
+
+model documentos {
+  id         String          @id
+  pacienteId String
+  tipo       documentos_tipo @default(OUTROS)
+  nome       String
+  descricao  String?         @db.Text
+  url        String
+  tamanho    Int?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime
+  pacientes  pacientes       @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+
+  @@index([pacienteId], map: "documentos_pacienteId_fkey")
+}
+
+model especialidades {
+  id            String          @id
+  nome          String          @unique
+  descricao     String?
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  profissionais profissionais[]
+}
+
+model evolucoes {
+  id           String      @id
+  prontuarioId String
+  descricao    String      @db.Text
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime
+  prontuarios  prontuarios @relation(fields: [prontuarioId], references: [id], onDelete: Cascade)
+
+  @@index([prontuarioId], map: "evolucoes_prontuarioId_fkey")
+}
+
+model logs {
+  id         String   @id
+  userId     String?
+  acao       String
+  entidade   String?
+  entidadeId String?
+  detalhes   String?  @db.Text
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model notificacoes {
+  id        String            @id
+  userId    String
+  tipo      notificacoes_tipo
+  titulo    String
+  mensagem  String            @db.Text
+  lida      Boolean           @default(false)
+  link      String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime
+  users     users             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, lida])
+}
+
+model pacientes {
+  id                 String       @id
+  nome               String
+  cpf                String?      @unique
+  rg                 String?
+  dataNascimento     DateTime?
+  telefone           String?
+  email              String?
+  endereco           String?
+  observacoes        String?      @db.Text
+  clinicaId          String?
+  medicoPreferencialId String?
+  active             Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime
+  consultas          consultas[]
+  documentos         documentos[]
+  clinica            clinicas?    @relation(fields: [clinicaId], references: [id])
+  medicoPreferencial profissionais? @relation("PacienteMedicoPreferencial", fields: [medicoPreferencialId], references: [id])
+
+  @@index([clinicaId])
+  @@index([medicoPreferencialId])
+}
+
+model prescricoes {
+  id           String       @id
+  consultaId   String?
+  prontuarioId String?
+  medicamento  String
+  dosagem      String
+  posologia    String
+  observacoes  String?      @db.Text
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime
+  consultas    consultas?   @relation(fields: [consultaId], references: [id], onDelete: Cascade)
+  prontuarios  prontuarios? @relation(fields: [prontuarioId], references: [id], onDelete: Cascade)
+
+  @@index([consultaId], map: "prescricoes_consultaId_fkey")
+  @@index([prontuarioId], map: "prescricoes_prontuarioId_fkey")
+}
+
+model profissionais {
+  id              String         @id
+  userId          String         @unique
+  crm             String?
+  nomeCompleto    String
+  telefone        String?
+  active          Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime
+  clinicaId       String
+  especialidadeId String
+  agendas         agendas[]
+  consultas       consultas[]
+  clinicas        clinicas       @relation(fields: [clinicaId], references: [id])
+  especialidades  especialidades @relation(fields: [especialidadeId], references: [id])
+  users           users          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pacientesPreferenciais pacientes[] @relation("PacienteMedicoPreferencial")
+  secretariasMedicos secretarias_medicos[]
+
+  @@index([clinicaId], map: "profissionais_clinicaId_fkey")
+  @@index([especialidadeId], map: "profissionais_especialidadeId_fkey")
+}
+
+model prontuarios {
+  id              String        @id
+  consultaId      String        @unique
+  queixaPrincipal String?       @db.Text
+  historico       String?       @db.Text
+  exameFisico     String?       @db.Text
+  diagnostico     String?       @db.Text
+  conduta         String?       @db.Text
+  observacoes     String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime
+  evolucoes       evolucoes[]
+  prescricoes     prescricoes[]
+  anexos          anexos_prontuario[]
+  consultas       consultas     @relation(fields: [consultaId], references: [id], onDelete: Cascade)
+}
+
+model anexos_prontuario {
+  id           String      @id @default(uuid())
+  prontuarioId String
+  nome         String
+  descricao    String?     @db.Text
+  url          String
+  tipo         String?     // MIME type
+  tamanho      Int?        // Tamanho em bytes
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime
+  prontuarios  prontuarios @relation(fields: [prontuarioId], references: [id], onDelete: Cascade)
+
+  @@index([prontuarioId])
+}
+
+model secretarias_medicos {
+  id            String        @id @default(uuid())
+  secretariaId  String
+  medicoId      String
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime
+  secretaria    users         @relation(fields: [secretariaId], references: [id], onDelete: Cascade)
+  medico        profissionais @relation(fields: [medicoId], references: [id], onDelete: Cascade)
+
+  @@unique([secretariaId, medicoId])
+  @@index([secretariaId])
+  @@index([medicoId])
+}
+
+model users {
+  id            String         @id
+  email         String         @unique
+  password      String
+  name          String
+  role          users_role     @default(SECRETARIA)
+  clinicaId     String?
+  active        Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime
+  notificacoes  notificacoes[]
+  profissionais profissionais?
+  clinica       clinicas?     @relation(fields: [clinicaId], references: [id])
+  clinicasCriadas clinicas[]   @relation("ClinicaOwner")
+  secretariasMedicos secretarias_medicos[]
+
+  @@index([clinicaId])
+}
+
+enum documentos_tipo {
+  EXAME
+  RECEITA
+  ATESTADO
+  OUTROS
+}
+
+enum notificacoes_tipo {
+  CONFIRMACAO
+  LEMBRETE
+  CANCELAMENTO
+  REAGENDAMENTO
+  OUTROS
+}
+
+enum users_role {
+  ADMIN
+  MEDICO
+  SECRETARIA
+}
+
+enum consultas_status {
+  AGENDADA
+  CONFIRMADA
+  EM_ATENDIMENTO
+  ATENDIDA
+  CANCELADA
+  FALTA
+}
