@@ -19,13 +19,18 @@ import { useAuthStore } from '@/lib/store/auth-store'
 import { useClinica } from '@/contexts/clinica-context'
 import { ClinicaLogo } from '@/components/clinica/ClinicaLogo'
 import { COMPANY } from '@/lib/company'
+import {
+  canAccessSystemAdmin,
+  canManageProfessionals,
+  isSystemAdmin,
+} from '@/lib/permissions'
 
 const allMenuItems = [
-  { href: '/admin', label: 'Painel do Dono', icon: Settings, roles: ['ADMIN'] },
+  { href: '/admin', label: 'Painel do Sistema', icon: Settings, systemAdminOnly: true },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/agenda', label: 'Agenda', icon: Calendar },
   { href: '/pacientes', label: 'Pacientes', icon: Users },
-  { href: '/profissionais', label: 'Profissionais', icon: User, roles: ['ADMIN', 'MEDICO', 'SECRETARIA'] },
+  { href: '/profissionais', label: 'Profissionais', icon: User, clinicAdminOnly: true },
   { href: '/consultas', label: 'Consultas', icon: ClipboardList },
   { href: '/prontuario', label: 'Prontuário', icon: FileText },
   { href: '/relatorios', label: 'Relatórios', icon: BarChart3 },
@@ -37,17 +42,14 @@ export function Sidebar() {
   const { logout, user } = useAuthStore()
   const { clinica } = useClinica()
   
-  // ADMIN não deve ter clínica vinculada
-  const isUserAdmin = user?.role?.toUpperCase() === 'ADMIN'
+  // ADMIN do sistema não tem clínica operacional vinculada
+  const isUserAdmin = isSystemAdmin(user)
   const shouldShowClinica = !isUserAdmin && clinica
   
-  // Filtrar itens do menu baseado no role do usuário
   const menuItems = allMenuItems.filter((item) => {
-    if (!item.roles) return true // Sem restrição de role
-    if (!user?.role) return false
-    return item.roles.some((role) => 
-      user.role?.toUpperCase() === role.toUpperCase()
-    )
+    if (item.systemAdminOnly) return canAccessSystemAdmin(user)
+    if (item.clinicAdminOnly) return canManageProfessionals(user)
+    return true
   })
 
   return (

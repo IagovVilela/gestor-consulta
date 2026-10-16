@@ -999,7 +999,9 @@ export default function ConfiguracoesPage() {
 
   const userIsAdmin = user?.role === 'ADMIN' || user?.role === 'admin'
   const isMedico = user?.role === 'MEDICO' || user?.role === 'medico'
-  const canManageUsers = userIsAdmin || isMedico
+  const isClinicOwner = user?.isClinicOwner === true
+  // Dono da clínica gerencia secretárias; ADMIN do sistema gerencia usuários globais
+  const canManageUsers = userIsAdmin || isClinicOwner
 
   return (
     <MainLayout>

@@ -19,7 +19,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
           <div className="border-b bg-slate-950 px-4 py-2 text-xs text-slate-200">
             Você está na operação clínica.{' '}
             <Link href="/admin" className="underline underline-offset-2 hover:text-white">
-              Voltar ao Painel do Dono
+              Voltar ao Painel do Sistema
             </Link>
           </div>
         )}

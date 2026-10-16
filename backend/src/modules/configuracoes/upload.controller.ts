@@ -12,11 +12,12 @@ import { extname } from 'path';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { ClinicOwnerGuard } from '../../common/guards/clinic-owner.guard';
 import * as crypto from 'crypto';
 
 @Controller('configuracoes')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
+@UseGuards(JwtAuthGuard, RolesGuard, ClinicOwnerGuard)
+@Roles('ADMIN', 'MEDICO')
 export class UploadController {
   @Post('upload/logo')
   @UseInterceptors(

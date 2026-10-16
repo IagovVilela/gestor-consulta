@@ -15,6 +15,8 @@ interface User {
   name: string
   role: 'ADMIN' | 'MEDICO' | 'SECRETARIA' | 'admin' | 'medico' | 'secretaria'
   clinicaId?: string | null
+  /** true quando o usuário é owner (proprietário) de pelo menos uma clínica */
+  isClinicOwner?: boolean
 }
 
 interface AuthState {

@@ -42,6 +42,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       clinicaId: user.clinicaId,
     });
     
+    const isClinicOwner =
+      user.role !== 'ADMIN' &&
+      !!(await this.authService.isClinicOwner(user.id));
+
     // IMPORTANTE: Retornar o usuário do banco, não do payload do token
     // Isso garante que sempre temos os dados mais atualizados
     return {
@@ -51,6 +55,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       role: user.role, // Role do banco, não do token
       active: user.active,
       clinicaId: user.role === 'ADMIN' ? null : (user.clinicaId || null),
+      isClinicOwner,
     };
   }
 }

@@ -21,6 +21,7 @@ import { UpdateClinicaDto } from './dto/update-clinica.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { ClinicAdminGuard } from '../../common/guards/clinic-admin.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @UseGuards(JwtAuthGuard)
@@ -37,14 +38,14 @@ export class ConfiguracoesController {
   }
 
   @Post('especialidades')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, ClinicAdminGuard)
   @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
   async createEspecialidade(@Body() createDto: CreateEspecialidadeDto) {
     return this.configuracoesService.createEspecialidade(createDto);
   }
 
   @Put('especialidades/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, ClinicAdminGuard)
   @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
   async updateEspecialidade(
     @Param('id') id: string,
@@ -54,7 +55,7 @@ export class ConfiguracoesController {
   }
 
   @Delete('especialidades/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, ClinicAdminGuard)
   @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
   async removeEspecialidade(@Param('id') id: string) {
     return this.configuracoesService.removeEspecialidade(id);

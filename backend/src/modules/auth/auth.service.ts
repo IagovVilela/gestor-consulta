@@ -50,11 +50,19 @@ export class AuthService {
     // Usar dados da clínica já carregados apenas se não for ADMIN
     const clinica = user.role === 'ADMIN' ? null : user.clinica;
 
+    const isClinicOwner =
+      user.role !== 'ADMIN' &&
+      !!(await this.prisma.clinicas.findFirst({
+        where: { ownerId: user.id, active: true },
+        select: { id: true },
+      }));
+
     const payload = {
       sub: user.id,
       email: user.email,
       role: user.role,
       clinicaId: user.role === 'ADMIN' ? null : (user.clinicaId || null),
+      isClinicOwner,
     };
 
     const token = this.jwtService.sign(payload);
@@ -67,6 +75,7 @@ export class AuthService {
         name: user.name,
         role: user.role,
         clinicaId: user.role === 'ADMIN' ? null : (user.clinicaId || null),
+        isClinicOwner,
       },
       clinica: clinica,
     };
@@ -283,6 +292,14 @@ export class AuthService {
     }, {
       timeout: 10000, // Timeout de 10 segundos para transação
     });
+  }
+
+  async isClinicOwner(userId: string): Promise<boolean> {
+    const owned = await this.prisma.clinicas.findFirst({
+      where: { ownerId: userId, active: true },
+      select: { id: true },
+    });
+    return !!owned;
   }
 
   async validateUser(userId: string) {

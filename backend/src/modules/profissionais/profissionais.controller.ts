@@ -17,6 +17,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ClinicaGuard } from '../../common/guards/clinica.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { ClinicAdminGuard } from '../../common/guards/clinic-admin.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @UseGuards(JwtAuthGuard, ClinicaGuard)
@@ -113,10 +114,10 @@ export class ProfissionaisController {
   }
 
   @Post()
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, ClinicAdminGuard)
   @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
   async create(@Body() createDto: CreateProfissionalDto, @CurrentUser() user?: any) {
-    // Médicos e secretárias só podem criar profissionais para sua própria clínica
+    // Proprietário e secretárias só podem criar profissionais para sua própria clínica
     if (user?.role?.toUpperCase() === 'SECRETARIA' || user?.role?.toUpperCase() === 'MEDICO') {
       createDto.clinicaId = user.clinicaId || createDto.clinicaId;
     }
@@ -128,10 +129,10 @@ export class ProfissionaisController {
    * Esta é a forma profissional e intuitiva de criar profissionais
    */
   @Post('completo')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, ClinicAdminGuard)
   @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
   async createCompleto(@Body() createDto: CreateProfissionalCompletoDto, @CurrentUser() user?: any) {
-    // Médicos e secretárias só podem criar profissionais para sua própria clínica
+    // Proprietário e secretárias só podem criar profissionais para sua própria clínica
     if (user?.role?.toUpperCase() === 'SECRETARIA' || user?.role?.toUpperCase() === 'MEDICO') {
       createDto.clinicaId = user.clinicaId || createDto.clinicaId;
     }
@@ -139,14 +140,14 @@ export class ProfissionaisController {
   }
 
   @Put(':id')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, ClinicAdminGuard)
   @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
   async update(@Param('id') id: string, @Body() updateDto: UpdateProfissionalDto) {
     return this.profissionaisService.update(id, updateDto);
   }
 
   @Delete(':id')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, ClinicAdminGuard)
   @Roles('ADMIN', 'MEDICO')
   async remove(@Param('id') id: string) {
     return this.profissionaisService.remove(id);

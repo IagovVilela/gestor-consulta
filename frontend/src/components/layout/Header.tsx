@@ -75,12 +75,14 @@ export function Header() {
 
   const roleLabel =
     user?.role?.toUpperCase() === 'ADMIN'
-      ? 'Administrador'
-      : user?.role?.toUpperCase() === 'MEDICO'
-        ? 'Médico'
-        : user?.role?.toUpperCase() === 'SECRETARIA'
-          ? 'Secretária'
-          : user?.role || ''
+      ? 'Admin do Sistema'
+      : user?.isClinicOwner
+        ? 'Proprietário da Clínica'
+        : user?.role?.toUpperCase() === 'MEDICO'
+          ? 'Médico'
+          : user?.role?.toUpperCase() === 'SECRETARIA'
+            ? 'Secretária'
+            : user?.role || ''
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-background px-6">
@@ -179,7 +181,7 @@ export function Header() {
               }}
             >
               <Settings className="mr-2 h-4 w-4" />
-              {isUserAdmin ? 'Painel Admin' : 'Meu perfil'}
+              {isUserAdmin ? 'Painel do Sistema' : 'Meu perfil'}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

@@ -125,7 +125,9 @@ export default function ProfissionaisPage() {
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'admin'
   const isSecretaria = user?.role === 'SECRETARIA' || user?.role === 'secretaria'
   const isMedico = user?.role === 'MEDICO' || user?.role === 'medico'
-  const canCreateProfissional = isAdmin || isSecretaria || isMedico
+  const isClinicOwner = user?.isClinicOwner === true
+  const canCreateProfissional =
+    isAdmin || isSecretaria || isClinicOwner
 
   // Form para criar profissional completo (usuário + profissional)
   const {
@@ -163,7 +165,7 @@ export default function ProfissionaisPage() {
       setLoading(true)
       const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'admin'
       const isSecretaria = currentUser?.role === 'SECRETARIA' || currentUser?.role === 'secretaria'
-      const isMedico = currentUser?.role === 'MEDICO' || currentUser?.role === 'medico'
+      const isClinicOwner = currentUser?.isClinicOwner === true
       
       // Determinar clinicaId para filtrar (ADMIN pode selecionar ou ver todas, outros usam a própria)
       // Se selectedClinicaId for "all", não passar clinicaId (mostrar todas)
@@ -205,7 +207,7 @@ export default function ProfissionaisPage() {
           api.get('/configuracoes/usuarios'),
           api.get('/configuracoes/clinicas')
         )
-      } else if (isSecretaria || isMedico) {
+      } else if (isSecretaria || isClinicOwner) {
         requests.push(
           api.get('/configuracoes/usuarios').then(res => ({
             data: res.data.filter((u: Usuario) => 
@@ -313,8 +315,9 @@ export default function ProfissionaisPage() {
   /* Handler para criar profissional completo (usuário + profissional) */
   const onSubmitCompleto = async (data: ProfissionalCompletoFormData) => {
     try {
-      // Médicos e secretárias sempre usam sua própria clínica
-      const clinicaId = isSecretaria || isMedico ? user?.clinicaId : data.clinicaId
+      // Dono/secretária sempre usam a própria clínica
+      const clinicaId =
+        isSecretaria || isClinicOwner ? user?.clinicaId : data.clinicaId
       
       // Remover formatação do telefone e CRM antes de enviar
       const dataToSend = {
@@ -349,8 +352,9 @@ export default function ProfissionaisPage() {
   /* Handler para vincular profissional a usuário existente (modo antigo) */
   const onSubmit = async (data: ProfissionalFormData) => {
     try {
-      // Médicos e secretárias sempre usam sua própria clínica
-      const clinicaId = isSecretaria || isMedico ? user?.clinicaId : data.clinicaId
+      // Dono/secretária sempre usam a própria clínica
+      const clinicaId =
+        isSecretaria || isClinicOwner ? user?.clinicaId : data.clinicaId
       
       // Remover formatação do telefone e CRM antes de enviar
       const dataToSend = {
@@ -432,7 +436,7 @@ export default function ProfissionaisPage() {
       email: '',
       password: '',
       name: '',
-      clinicaId: isSecretaria || isMedico ? (user?.clinicaId || '') : '',
+      clinicaId: isSecretaria || isClinicOwner ? (user?.clinicaId || '') : '',
       especialidadeId: '',
       nomeCompleto: '',
       crm: '',
@@ -831,7 +835,7 @@ export default function ProfissionaisPage() {
                       )}
                     </div>
                   )}
-                  {(isSecretaria || isMedico) && (
+                  {(isSecretaria || isClinicOwner) && (
                     <div className="space-y-2">
                       <Label htmlFor="clinicaId">Clínica *</Label>
                       <Input
