@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -166,10 +166,7 @@ interface Paciente {
   nome: string
 }
 
-// Desabilitar prerendering estático para evitar problemas com módulos dinâmicos
-export const dynamic = 'force-dynamic'
-
-export default function ProntuarioPage() {
+function ProntuarioPageContent() {
   const searchParams = useSearchParams()
   const consultaId = searchParams.get('consultaId')
   const pacienteId = searchParams.get('pacienteId')
@@ -1430,6 +1427,16 @@ export default function ProntuarioPage() {
   )
 }
 
-
-
-
+export default function ProntuarioPage() {
+  return (
+    <Suspense
+      fallback={
+        <MainLayout>
+          <div className="p-6 text-sm text-muted-foreground">Carregando prontuário...</div>
+        </MainLayout>
+      }
+    >
+      <ProntuarioPageContent />
+    </Suspense>
+  )
+}
