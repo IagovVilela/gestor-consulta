@@ -17,30 +17,21 @@ export function GlobalLoadingBar() {
   }, [active])
 
   return (
-    <>
+    <div
+      className={cn(
+        'pointer-events-none fixed inset-x-0 top-0 z-[100] h-1 overflow-hidden bg-transparent transition-opacity',
+        active ? 'opacity-100' : 'opacity-0',
+      )}
+      aria-hidden={!active}
+      role="progressbar"
+      aria-busy={active}
+    >
       <div
         className={cn(
-          'pointer-events-none fixed inset-x-0 top-0 z-[100] h-1 overflow-hidden bg-transparent transition-opacity',
-          active ? 'opacity-100' : 'opacity-0',
+          'h-full w-1/3 rounded-r-full bg-primary shadow-[0_0_12px_hsl(var(--primary))]',
+          active && 'animate-global-loading-bar',
         )}
-        aria-hidden={!active}
-        role="progressbar"
-        aria-busy={active}
-      >
-        <div
-          className={cn(
-            'h-full w-1/3 rounded-r-full bg-primary shadow-[0_0_12px_hsl(var(--primary))]',
-            active && 'animate-global-loading-bar',
-          )}
-        />
-      </div>
-
-      {active && (
-        <div
-          className="fixed inset-0 z-[90] cursor-wait bg-background/10"
-          aria-hidden
-        />
-      )}
-    </>
+      />
+    </div>
   )
 }

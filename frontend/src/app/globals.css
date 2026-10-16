@@ -60,17 +60,6 @@
   body {
     @apply bg-background text-foreground;
   }
-  body.global-loading {
-    cursor: wait;
-  }
-  body.global-loading button,
-  body.global-loading a,
-  body.global-loading input,
-  body.global-loading select,
-  body.global-loading textarea,
-  body.global-loading [role="button"] {
-    pointer-events: none;
-  }
 }
 
 @keyframes global-loading-bar {

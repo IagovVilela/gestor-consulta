@@ -42,8 +42,8 @@ export function Header() {
     try {
       setLoadingNotificacoes(true)
       const [listaRes, countRes] = await Promise.all([
-        api.get('/notificacoes'),
-        api.get('/notificacoes/nao-lidas'),
+        api.get('/notificacoes', { skipLoading: true }),
+        api.get('/notificacoes/nao-lidas', { skipLoading: true }),
       ])
       setNotificacoes(Array.isArray(listaRes.data) ? listaRes.data.slice(0, 8) : [])
       setNaoLidas(Number(countRes.data?.count || 0))
@@ -63,7 +63,7 @@ export function Header() {
 
   const marcarComoLida = async (id: string) => {
     try {
-      await api.put(`/notificacoes/${id}/lida`)
+      await api.put(`/notificacoes/${id}/lida`, undefined, { skipLoading: true })
       setNotificacoes((prev) =>
         prev.map((item) => (item.id === id ? { ...item, lida: true } : item)),
       )
