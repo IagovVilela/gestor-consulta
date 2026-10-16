@@ -90,7 +90,8 @@ export function LoginForm() {
 
       // Determinar URL de redirecionamento
       const role = (user.role || 'SECRETARIA').toUpperCase()
-      const redirectUrl = (role === 'ADMIN' || role === 'MEDICO') ? '/dashboard' : '/agenda'
+      const redirectUrl =
+        role === 'ADMIN' ? '/admin' : role === 'MEDICO' ? '/dashboard' : '/agenda'
       
       console.log('Redirecionando para:', redirectUrl, 'com role:', role)
       

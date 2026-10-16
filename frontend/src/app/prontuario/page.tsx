@@ -1022,11 +1022,11 @@ export default function ProntuarioPage() {
                             onClick={() => {
                               // A URL já vem do backend como /api/uploads/prontuarios/...
                               // Precisamos construir a URL completa usando a baseURL do axios
-                              const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+                              const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3011/api'
                               const url = anexo.url.startsWith('http') 
                                 ? anexo.url 
                                 : anexo.url.startsWith('/api')
-                                ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3001'}${anexo.url}`
+                                ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3011'}${anexo.url}`
                                 : `${baseUrl}${anexo.url}`
                               window.open(url, '_blank')
                             }}

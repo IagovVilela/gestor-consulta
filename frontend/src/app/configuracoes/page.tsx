@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/components/ui/use-toast'
-import { Plus, Edit, Trash2, Users, Stethoscope, Building2, Upload, X } from 'lucide-react'
+import { Plus, Edit, Trash2, Users, Stethoscope, Building2, Upload, X, Link2 } from 'lucide-react'
 import api from '@/lib/axios'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -78,6 +78,7 @@ interface Usuario {
 interface Clinica {
   id: string
   nome: string
+  slug?: string | null
   cnpj?: string
   endereco?: string
   telefone?: string
@@ -152,6 +153,8 @@ export default function ConfiguracoesPage() {
   const [especialidades, setEspecialidades] = useState<Especialidade[]>([])
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [clinicas, setClinicas] = useState<Clinica[]>([])
+  const [portalSlug, setPortalSlug] = useState<string | null>(null)
+  const [portalUrl, setPortalUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [isLoadingData, setIsLoadingData] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
@@ -429,6 +432,42 @@ export default function ConfiguracoesPage() {
       })
     }
   }, [user, isAuthenticated, clinica, resetPersonalizacao])
+
+  useEffect(() => {
+    const role = user?.role?.toUpperCase()
+    if (!user || role === 'ADMIN' || !user.clinicaId) {
+      setPortalSlug(null)
+      setPortalUrl('')
+      return
+    }
+
+    api.get('/configuracoes/portal-link')
+      .then((response) => {
+        setPortalSlug(response.data.slug)
+        setPortalUrl(`${window.location.origin}/c/${response.data.slug}`)
+      })
+      .catch(() => {
+        setPortalSlug(null)
+        setPortalUrl('')
+      })
+  }, [user])
+
+  const copyPatientLink = async (slug: string) => {
+    const url = `${window.location.origin}/c/${slug}`
+    try {
+      await navigator.clipboard.writeText(url)
+      toast({
+        title: 'Link copiado',
+        description: 'Envie este link para o paciente agendar, alterar ou cancelar a consulta.',
+      })
+    } catch {
+      toast({
+        title: 'Não foi possível copiar',
+        description: url,
+        variant: 'destructive',
+      })
+    }
+  }
   
   // Adicionar um listener para quando o usuário for carregado após a hidratação
   useEffect(() => {
@@ -824,7 +863,7 @@ export default function ConfiguracoesPage() {
 
       const logoUrl = response.data.url.startsWith('http') 
         ? response.data.url 
-        : `http://localhost:3001${response.data.url}`
+        : `http://localhost:3011${response.data.url}`
       if (editingClinica) {
         setValueClinica('logoUrl', logoUrl)
       } else {
@@ -940,6 +979,26 @@ export default function ConfiguracoesPage() {
             Configure o sistema e suas preferências
           </p>
         </div>
+
+        {!userIsAdmin && portalSlug && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Link para pacientes</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Envie este link para os pacientes agendarem, alterarem ou cancelarem a consulta.
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input readOnly value={portalUrl} />
+                <Button type="button" onClick={() => copyPatientLink(portalSlug)}>
+                  <Link2 className="mr-2 h-4 w-4" />
+                  Copiar link
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="perfil" className="space-y-4">
           <TabsList>
@@ -1216,6 +1275,16 @@ export default function ConfiguracoesPage() {
                             <TableCell>{c.email || '-'}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
+                                {c.slug && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    title="Copiar link para pacientes"
+                                    onClick={() => copyPatientLink(c.slug as string)}
+                                  >
+                                    <Link2 className="h-4 w-4" />
+                                  </Button>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="icon"

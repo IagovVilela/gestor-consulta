@@ -18,8 +18,10 @@ import {
 import { useAuthStore } from '@/lib/store/auth-store'
 import { useClinica } from '@/contexts/clinica-context'
 import { ClinicaLogo } from '@/components/clinica/ClinicaLogo'
+import { COMPANY } from '@/lib/company'
 
 const allMenuItems = [
+  { href: '/admin', label: 'Painel do Dono', icon: Settings, roles: ['ADMIN'] },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/agenda', label: 'Agenda', icon: Calendar },
   { href: '/pacientes', label: 'Pacientes', icon: Users },
@@ -82,7 +84,26 @@ export function Sidebar() {
           )
         })}
       </nav>
-      <div className="border-t p-4">
+      <div className="border-t p-4 space-y-3">
+        <div className="px-3 text-xs text-muted-foreground space-y-1">
+          <p className="font-medium text-foreground/80">{COMPANY.shortName}</p>
+          <a
+            href={COMPANY.whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block hover:text-foreground hover:underline"
+          >
+            {COMPANY.phoneDisplay}
+          </a>
+          <a
+            href={COMPANY.instagramUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block hover:text-foreground hover:underline"
+          >
+            Instagram {COMPANY.instagramHandle}
+          </a>
+        </div>
         <button
           onClick={() => {
             logout()

@@ -7,6 +7,7 @@ import { SecretariasMedicosService } from './secretarias-medicos.service';
 @Module({
   controllers: [ConfiguracoesController, UploadController],
   providers: [ConfiguracoesService, SecretariasMedicosService],
+  exports: [ConfiguracoesService],
 })
 export class ConfiguracoesModule {}
 

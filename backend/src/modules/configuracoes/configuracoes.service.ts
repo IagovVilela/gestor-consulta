@@ -7,6 +7,7 @@ import { CreateClinicaCompletoDto } from './dto/create-clinica-completo.dto';
 import { UpdateClinicaDto } from './dto/update-clinica.dto';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
+import { createClinicSlug } from '../../common/utils/clinic-slug';
 
 @Injectable()
 export class ConfiguracoesService {
@@ -276,6 +277,11 @@ export class ConfiguracoesService {
       where: { active: true },
       orderBy: { nome: 'asc' },
     });
+    for (const clinica of clinicas) {
+      if (!clinica.slug) {
+        clinica.slug = await this.ensureClinicSlug(clinica.id);
+      }
+    }
     console.log(`✅ SERVICE - getClinicas retornou ${clinicas.length} clínica(s)`);
     console.log('Clínicas encontradas:', clinicas.map(c => ({ id: c.id, nome: c.nome, active: c.active })));
     return clinicas;
@@ -312,6 +318,30 @@ export class ConfiguracoesService {
         active: true,
       },
     });
+  }
+
+  async ensureClinicSlug(clinicaId: string): Promise<string> {
+    const clinica = await this.prisma.clinicas.findUnique({ where: { id: clinicaId } });
+    if (!clinica || !clinica.active) {
+      throw new BadRequestException('Clínica não encontrada');
+    }
+    if (clinica.slug) return clinica.slug;
+
+    const slug = await this.uniqueSlug(clinica.nome);
+    await this.prisma.clinicas.update({
+      where: { id: clinicaId },
+      data: { slug },
+    });
+    return slug;
+  }
+
+  private async uniqueSlug(nome: string, db: any = this.prisma): Promise<string> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const slug = createClinicSlug(nome);
+      const existing = await db.clinicas.findUnique({ where: { slug } });
+      if (!existing) return slug;
+    }
+    return createClinicSlug(`${nome}-${Date.now()}`);
   }
 
   async getClinica(id: string) {
@@ -399,6 +429,9 @@ export class ConfiguracoesService {
           if (createDto.corSecundaria && createDto.corSecundaria.trim() !== '') {
             updateData.corSecundaria = createDto.corSecundaria.trim();
           }
+          if (!existingClinica.slug) {
+            updateData.slug = await this.uniqueSlug(createDto.nome.trim(), tx);
+          }
           
           // Reativar clínica existente
           const reactivatedClinica = await tx.clinicas.update({
@@ -470,6 +503,16 @@ export class ConfiguracoesService {
         console.log('✅ CNPJ disponível para uso');
       }
       
+      data.slug = await this.uniqueSlug(createDto.nome.trim(), tx);
+      const planoBasico = await tx.planos.findUnique({ where: { nome: 'Básico' } });
+      if (planoBasico) {
+        data.planoId = planoBasico.id;
+      }
+      data.statusPlataforma = 'TRIAL';
+      const trialAte = new Date();
+      trialAte.setDate(trialAte.getDate() + 14);
+      data.trialAte = trialAte;
+
       console.log('💾 Tentando criar clínica no banco...');
       const createdClinica = await tx.clinicas.create({
         data,
@@ -545,9 +588,17 @@ export class ConfiguracoesService {
       }
 
       // Criar clínica primeiro
+      const planoBasico = await tx.planos.findUnique({ where: { nome: 'Básico' } });
+      const trialAte = new Date();
+      trialAte.setDate(trialAte.getDate() + 14);
+
       const clinicaData: any = {
         id: crypto.randomUUID(),
         nome: createDto.nome.trim(),
+        slug: await this.uniqueSlug(createDto.nome.trim(), tx),
+        statusPlataforma: 'TRIAL',
+        trialAte,
+        planoId: planoBasico?.id || null,
         updatedAt: new Date(),
       };
 

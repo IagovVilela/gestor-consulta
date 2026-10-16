@@ -22,27 +22,51 @@ model agendas {
   @@index([profissionalId], map: "agendas_profissionalId_fkey")
 }
 
+model planos {
+  id               String     @id
+  nome             String     @unique
+  descricao        String?    @db.Text
+  precoMensal      Float      @default(0)
+  maxMedicos       Int        @default(5)
+  maxSecretarias   Int        @default(10)
+  maxConsultasMes  Int        @default(500)
+  portalAtivo      Boolean    @default(true)
+  active           Boolean    @default(true)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime
+  clinicas         clinicas[]
+}
+
 model clinicas {
-  id            String          @id
-  nome          String
-  cnpj          String?         @unique
-  endereco      String?
-  telefone      String?
-  email         String?
-  logoUrl       String?
-  corPrimaria   String?
-  corSecundaria String?
-  ownerId       String?
-  active        Boolean         @default(true)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime
-  consultas     consultas[]
-  profissionais profissionais[]
-  pacientes     pacientes[]
-  users         users[]
-  owner         users?          @relation("ClinicaOwner", fields: [ownerId], references: [id])
+  id                String                   @id
+  nome              String
+  cnpj              String?                  @unique
+  endereco          String?
+  telefone          String?
+  email             String?
+  slug              String?                  @unique
+  logoUrl           String?
+  corPrimaria       String?
+  corSecundaria     String?
+  ownerId           String?
+  planoId           String?
+  statusPlataforma  clinicas_status_plataforma @default(TRIAL)
+  trialAte          DateTime?
+  suspensaEm        DateTime?
+  observacoesAdmin  String?                  @db.Text
+  active            Boolean                  @default(true)
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime
+  consultas         consultas[]
+  profissionais     profissionais[]
+  pacientes         pacientes[]
+  users             users[]
+  owner             users?                   @relation("ClinicaOwner", fields: [ownerId], references: [id])
+  plano             planos?                  @relation(fields: [planoId], references: [id])
 
   @@index([ownerId])
+  @@index([planoId])
+  @@index([statusPlataforma])
 }
 
 model consultas {
@@ -286,6 +310,13 @@ enum users_role {
   ADMIN
   MEDICO
   SECRETARIA
+}
+
+enum clinicas_status_plataforma {
+  TRIAL
+  ATIVA
+  SUSPENSA
+  CANCELADA
 }
 
 enum consultas_status {

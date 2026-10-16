@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { AppModule } from './app.module';
@@ -29,8 +29,10 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
       transform: true,
       exceptionFactory: (errors) => {
-        console.error('Erro de validação:', JSON.stringify(errors, null, 2));
-        return errors;
+        const messages = errors.flatMap((error) =>
+          Object.values(error.constraints ?? {}),
+        );
+        return new BadRequestException(messages[0] || 'Dados inválidos');
       },
     }),
   );

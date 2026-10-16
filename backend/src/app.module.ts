@@ -11,6 +11,8 @@ import { RelatoriosModule } from './modules/relatorios/relatorios.module';
 import { NotificacoesModule } from './modules/notificacoes/notificacoes.module';
 import { ConfiguracoesModule } from './modules/configuracoes/configuracoes.module';
 import { ProfissionaisModule } from './modules/profissionais/profissionais.module';
+import { PortalModule } from './modules/portal/portal.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { ProfissionaisModule } from './modules/profissionais/profissionais.modul
     NotificacoesModule,
     ConfiguracoesModule,
     ProfissionaisModule,
+    PortalModule,
+    AdminModule,
   ],
   controllers: [],
   providers: [],

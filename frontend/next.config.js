@@ -4,6 +4,15 @@ const nextConfig = {
   images: {
     domains: ['localhost'],
   },
+  async rewrites() {
+    const apiOrigin = process.env.BACKEND_URL || 'http://localhost:3011'
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${apiOrigin}/api/:path*`,
+      },
+    ]
+  },
   // Otimizações para hot reload
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {
@@ -17,4 +26,3 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
-

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { LoginForm } from '@/modules/auth/components/LoginForm'
+import { CompanyContact } from '@/components/brand/CompanyContact'
 import { useAuthStore } from '@/lib/store/auth-store'
 import api from '@/lib/axios'
 
@@ -43,8 +44,8 @@ export default function LoginPage() {
       if (token && isAuthenticated && user) {
         try {
           await api.get('/auth/me')
-          // Token válido, redirecionar para dashboard
-          router.push('/dashboard')
+          const role = (user.role || '').toUpperCase()
+          router.push(role === 'ADMIN' ? '/admin' : '/dashboard')
         } catch (error) {
           // Token inválido, limpar e permitir login
           logout()
@@ -77,10 +78,10 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md space-y-6">
         <LoginForm />
         {(localStorage.getItem('token') || isAuthenticated) && (
-          <div className="mt-4 text-center">
+          <div className="text-center">
             <button
               onClick={handleClearSession}
               className="text-sm text-muted-foreground hover:text-foreground underline"
@@ -89,6 +90,7 @@ export default function LoginPage() {
             </button>
           </div>
         )}
+        <CompanyContact compact className="rounded-xl border bg-background/80 px-4 py-4 shadow-sm" />
       </div>
     </div>
   )

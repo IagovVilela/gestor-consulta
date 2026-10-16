@@ -1,68 +1,53 @@
-import axios from 'axios'
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
+import { startGlobalLoading, stopGlobalLoading } from '@/lib/store/loading-store'
+
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    skipLoading?: boolean
+  }
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-// Request interceptor para adicionar token
 api.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
+    if (!config.skipLoading) {
+      startGlobalLoading()
+    }
+
     const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
-      // Log apenas para requisições de clínicas para debug
-      if (config.url?.includes('clinicas')) {
-        console.log('📤 Requisição de clínica:', {
-          url: config.url,
-          method: config.method,
-          hasToken: !!token,
-          tokenPreview: token.substring(0, 20) + '...',
-        })
-      }
-    } else {
-      console.warn('⚠️ Requisição sem token:', config.url)
     }
     return config
   },
   (error) => {
+    stopGlobalLoading()
     return Promise.reject(error)
-  }
+  },
 )
 
-// Response interceptor para tratar erros
+function finishLoading(config?: InternalAxiosRequestConfig) {
+  if (!config?.skipLoading) {
+    stopGlobalLoading()
+  }
+}
+
 api.interceptors.response.use(
   (response) => {
-    // Log de respostas bem-sucedidas para debug
-    if (response.config.url?.includes('clinicas')) {
-      console.log('✅ Resposta de clínica (interceptor):', {
-        url: response.config.url,
-        method: response.config.method,
-        status: response.status,
-        data: response.data,
-        dataType: Array.isArray(response.data) ? 'Array' : typeof response.data,
-        dataLength: Array.isArray(response.data) ? response.data.length : 'N/A',
-      })
-      console.log('✅ Resposta completa (interceptor):', response)
-    }
+    finishLoading(response.config)
     return response
   },
-  (error) => {
-    // Log detalhado de erros
-    if (error.config?.url?.includes('clinicas')) {
-      console.error('❌ Erro na requisição de clínica:', {
-        url: error.config.url,
-        method: error.config.method,
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message,
-      })
-    }
-    
+  (error: AxiosError) => {
+    finishLoading(error.config)
     if (error.response?.status === 401) {
-      // Não redirecionar se já estiver na página de login
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         localStorage.removeItem('token')
         localStorage.removeItem('auth-storage')
@@ -70,9 +55,7 @@ api.interceptors.response.use(
       }
     }
     return Promise.reject(error)
-  }
+  },
 )
 
 export default api
-
-

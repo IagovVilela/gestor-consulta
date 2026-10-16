@@ -166,6 +166,15 @@ export class ConfiguracoesController {
     return this.configuracoesService.removeUsuario(id, user?.id);
   }
 
+  @Get('portal-link')
+  async getPortalLink(@CurrentUser() user?: any) {
+    if (!user?.clinicaId) {
+      throw new BadRequestException('Usuário sem clínica vinculada');
+    }
+    const slug = await this.configuracoesService.ensureClinicSlug(user.clinicaId);
+    return { slug, path: `/c/${slug}` };
+  }
+
   @Get('clinicas')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
