@@ -13,6 +13,7 @@ import { ConfiguracoesModule } from './modules/configuracoes/configuracoes.modul
 import { ProfissionaisModule } from './modules/profissionais/profissionais.module';
 import { PortalModule } from './modules/portal/portal.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -34,7 +35,7 @@ import { AdminModule } from './modules/admin/admin.module';
     PortalModule,
     AdminModule,
   ],
-  controllers: [],
+  controllers: [HealthController],
   providers: [],
 })
 export class AppModule {}
