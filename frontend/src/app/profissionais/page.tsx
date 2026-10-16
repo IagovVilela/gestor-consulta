@@ -313,8 +313,8 @@ export default function ProfissionaisPage() {
   /* Handler para criar profissional completo (usuário + profissional) */
   const onSubmitCompleto = async (data: ProfissionalCompletoFormData) => {
     try {
-      // Secretárias sempre usam sua própria clínica
-      const clinicaId = isSecretaria ? user?.clinicaId : data.clinicaId
+      // Médicos e secretárias sempre usam sua própria clínica
+      const clinicaId = isSecretaria || isMedico ? user?.clinicaId : data.clinicaId
       
       // Remover formatação do telefone e CRM antes de enviar
       const dataToSend = {
@@ -349,8 +349,8 @@ export default function ProfissionaisPage() {
   /* Handler para vincular profissional a usuário existente (modo antigo) */
   const onSubmit = async (data: ProfissionalFormData) => {
     try {
-      // Secretárias sempre usam sua própria clínica
-      const clinicaId = isSecretaria ? user?.clinicaId : data.clinicaId
+      // Médicos e secretárias sempre usam sua própria clínica
+      const clinicaId = isSecretaria || isMedico ? user?.clinicaId : data.clinicaId
       
       // Remover formatação do telefone e CRM antes de enviar
       const dataToSend = {
@@ -432,7 +432,7 @@ export default function ProfissionaisPage() {
       email: '',
       password: '',
       name: '',
-      clinicaId: isSecretaria ? (user?.clinicaId || '') : '',
+      clinicaId: isSecretaria || isMedico ? (user?.clinicaId || '') : '',
       especialidadeId: '',
       nomeCompleto: '',
       crm: '',
@@ -831,7 +831,7 @@ export default function ProfissionaisPage() {
                       )}
                     </div>
                   )}
-                  {isSecretaria && (
+                  {(isSecretaria || isMedico) && (
                     <div className="space-y-2">
                       <Label htmlFor="clinicaId">Clínica *</Label>
                       <Input
