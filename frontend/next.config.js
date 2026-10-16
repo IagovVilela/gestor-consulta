@@ -2,7 +2,11 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['localhost'],
+    remotePatterns: [
+      { protocol: 'http', hostname: 'localhost', port: '3011', pathname: '/api/uploads/**' },
+      { protocol: 'https', hostname: '**.up.railway.app', pathname: '/api/uploads/**' },
+      { protocol: 'https', hostname: '**.railway.app', pathname: '/api/uploads/**' },
+    ],
   },
   async rewrites() {
     const apiOrigin = process.env.BACKEND_URL || 'http://localhost:3011'

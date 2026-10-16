@@ -46,7 +46,7 @@ import {
 } from '@/components/ui/tabs'
 import { Palette } from 'lucide-react'
 import { maskCNPJ, maskPhone, unmaskCNPJ, unmaskPhone } from '@/lib/utils/masks'
-import Image from 'next/image'
+import { normalizeMediaUrl } from '@/lib/media'
 import { useRef } from 'react'
 
 const especialidadeSchema = z.object({
@@ -109,7 +109,18 @@ const clinicaSchema = z.object({
   endereco: z.string().optional(),
   telefone: z.string().optional(),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
-  logoUrl: z.string().url('URL inválida').optional().or(z.literal('')),
+  logoUrl: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .refine(
+      (value) =>
+        !value ||
+        value === '' ||
+        value.startsWith('/') ||
+        /^https?:\/\//i.test(value),
+      'URL inválida',
+    ),
   corPrimaria: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve ser em formato hexadecimal').optional().or(z.literal('')),
   corSecundaria: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve ser em formato hexadecimal').optional().or(z.literal('')),
   // Campos do gerente para edição
@@ -126,7 +137,18 @@ const clinicaCompletoSchema = z.object({
   endereco: z.string().optional(),
   telefone: z.string().optional(),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
-  logoUrl: z.string().url('URL inválida').optional().or(z.literal('')),
+  logoUrl: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .refine(
+      (value) =>
+        !value ||
+        value === '' ||
+        value.startsWith('/') ||
+        /^https?:\/\//i.test(value),
+      'URL inválida',
+    ),
   corPrimaria: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve ser em formato hexadecimal').optional().or(z.literal('')),
   corSecundaria: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve ser em formato hexadecimal').optional().or(z.literal('')),
   // Dados do gerente (dono da clínica)
@@ -140,7 +162,18 @@ type ClinicaFormData = z.infer<typeof clinicaSchema>
 type ClinicaCompletoFormData = z.infer<typeof clinicaCompletoSchema>
 
 const personalizacaoSchema = z.object({
-  logoUrl: z.string().url('URL inválida').optional().or(z.literal('')),
+  logoUrl: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .refine(
+      (value) =>
+        !value ||
+        value === '' ||
+        value.startsWith('/') ||
+        /^https?:\/\//i.test(value),
+      'URL inválida',
+    ),
   corPrimaria: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve ser em formato hexadecimal (#RRGGBB)').optional().or(z.literal('')),
   corSecundaria: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve ser em formato hexadecimal (#RRGGBB)').optional().or(z.literal('')),
 })
@@ -426,7 +459,7 @@ export default function ConfiguracoesPage() {
     // Atualizar valores do formulário quando a clínica mudar
     if (clinica) {
       resetPersonalizacao({
-        logoUrl: clinica.logoUrl || '',
+        logoUrl: normalizeMediaUrl(clinica.logoUrl) || '',
         corPrimaria: clinica.corPrimaria || '',
         corSecundaria: clinica.corSecundaria || '',
       })
@@ -639,7 +672,7 @@ export default function ConfiguracoesPage() {
         cleanData.email = data.email
       }
       if (data.logoUrl && data.logoUrl.trim() !== '') {
-        cleanData.logoUrl = data.logoUrl
+        cleanData.logoUrl = normalizeMediaUrl(data.logoUrl) || data.logoUrl
       }
       if (data.corPrimaria && data.corPrimaria.trim() !== '') {
         cleanData.corPrimaria = data.corPrimaria
@@ -710,7 +743,7 @@ export default function ConfiguracoesPage() {
         cleanData.email = data.email
       }
       if (data.logoUrl && data.logoUrl.trim() !== '') {
-        cleanData.logoUrl = data.logoUrl
+        cleanData.logoUrl = normalizeMediaUrl(data.logoUrl) || data.logoUrl
       }
       if (data.corPrimaria && data.corPrimaria.trim() !== '') {
         cleanData.corPrimaria = data.corPrimaria
@@ -806,7 +839,7 @@ export default function ConfiguracoesPage() {
         endereco: clinicaCompleta.endereco || '',
         telefone: clinicaCompleta.telefone || '',
         email: clinicaCompleta.email || '',
-        logoUrl: clinicaCompleta.logoUrl || '',
+        logoUrl: normalizeMediaUrl(clinicaCompleta.logoUrl) || '',
         corPrimaria: clinicaCompleta.corPrimaria || '',
         corSecundaria: clinicaCompleta.corSecundaria || '',
         gerenteId: clinicaCompleta.ownerId || '',
@@ -814,7 +847,7 @@ export default function ConfiguracoesPage() {
         gerenteEmail: clinicaCompleta.owner?.email || '',
         gerentePassword: '', // Não preencher senha por segurança
       })
-      setLogoPreview(clinicaCompleta.logoUrl || null)
+      setLogoPreview(normalizeMediaUrl(clinicaCompleta.logoUrl) || null)
       setIsClinicaDialogOpen(true)
     } catch (error: any) {
       console.error('Erro ao carregar dados da clínica:', error)
@@ -861,9 +894,7 @@ export default function ConfiguracoesPage() {
         },
       })
 
-      const logoUrl = response.data.url.startsWith('http') 
-        ? response.data.url 
-        : `http://localhost:3011${response.data.url}`
+      const logoUrl = normalizeMediaUrl(response.data.url) || response.data.url
       if (editingClinica) {
         setValueClinica('logoUrl', logoUrl)
       } else {
@@ -1100,10 +1131,11 @@ export default function ConfiguracoesPage() {
                           {errorsPersonalizacao.logoUrl.message}
                         </p>
                       )}
-                      {clinica.logoUrl && (
+                      {normalizeMediaUrl(clinica.logoUrl) && (
                         <div className="mt-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={clinica.logoUrl}
+                            src={normalizeMediaUrl(clinica.logoUrl) || undefined}
                             alt="Logo atual"
                             className="h-20 w-20 object-contain"
                           />
@@ -1688,7 +1720,8 @@ export default function ConfiguracoesPage() {
                   <div className="flex items-center gap-4">
                     {logoPreview ? (
                       <div className="relative">
-                        <Image
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
                           src={logoPreview}
                           alt="Logo preview"
                           width={100}
