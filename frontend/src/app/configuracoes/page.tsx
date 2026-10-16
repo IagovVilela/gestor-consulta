@@ -1099,7 +1099,7 @@ export default function ConfiguracoesPage() {
                     onSubmit={handleSubmitPersonalizacao(async (data) => {
                       try {
                         await updatePersonalization(clinica.id, {
-                          logoUrl: data.logoUrl || undefined,
+                          logoUrl: normalizeMediaUrl(data.logoUrl) || undefined,
                           corPrimaria: data.corPrimaria || undefined,
                           corSecundaria: data.corSecundaria || undefined,
                         })
