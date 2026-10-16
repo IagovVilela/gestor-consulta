@@ -114,10 +114,10 @@ export class ProfissionaisController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'SECRETARIA')
+  @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
   async create(@Body() createDto: CreateProfissionalDto, @CurrentUser() user?: any) {
-    // Secretárias só podem criar profissionais para sua própria clínica
-    if (user?.role?.toUpperCase() === 'SECRETARIA') {
+    // Médicos e secretárias só podem criar profissionais para sua própria clínica
+    if (user?.role?.toUpperCase() === 'SECRETARIA' || user?.role?.toUpperCase() === 'MEDICO') {
       createDto.clinicaId = user.clinicaId || createDto.clinicaId;
     }
     return this.profissionaisService.create(createDto);
@@ -129,10 +129,10 @@ export class ProfissionaisController {
    */
   @Post('completo')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'SECRETARIA')
+  @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
   async createCompleto(@Body() createDto: CreateProfissionalCompletoDto, @CurrentUser() user?: any) {
-    // Secretárias só podem criar profissionais para sua própria clínica
-    if (user?.role?.toUpperCase() === 'SECRETARIA') {
+    // Médicos e secretárias só podem criar profissionais para sua própria clínica
+    if (user?.role?.toUpperCase() === 'SECRETARIA' || user?.role?.toUpperCase() === 'MEDICO') {
       createDto.clinicaId = user.clinicaId || createDto.clinicaId;
     }
     return this.profissionaisService.createCompleto(createDto);
@@ -140,14 +140,14 @@ export class ProfissionaisController {
 
   @Put(':id')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
   async update(@Param('id') id: string, @Body() updateDto: UpdateProfissionalDto) {
     return this.profissionaisService.update(id, updateDto);
   }
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'MEDICO')
   async remove(@Param('id') id: string) {
     return this.profissionaisService.remove(id);
   }

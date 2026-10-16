@@ -124,7 +124,8 @@ export default function ProfissionaisPage() {
   
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'admin'
   const isSecretaria = user?.role === 'SECRETARIA' || user?.role === 'secretaria'
-  const canCreateProfissional = isAdmin || isSecretaria
+  const isMedico = user?.role === 'MEDICO' || user?.role === 'medico'
+  const canCreateProfissional = isAdmin || isSecretaria || isMedico
 
   // Form para criar profissional completo (usuário + profissional)
   const {
@@ -162,6 +163,7 @@ export default function ProfissionaisPage() {
       setLoading(true)
       const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'admin'
       const isSecretaria = currentUser?.role === 'SECRETARIA' || currentUser?.role === 'secretaria'
+      const isMedico = currentUser?.role === 'MEDICO' || currentUser?.role === 'medico'
       
       // Determinar clinicaId para filtrar (ADMIN pode selecionar ou ver todas, outros usam a própria)
       // Se selectedClinicaId for "all", não passar clinicaId (mostrar todas)
@@ -197,15 +199,13 @@ export default function ProfissionaisPage() {
         api.get('/configuracoes/especialidades'),
       ]
 
-      // ADMIN e SECRETARIA precisam de usuários para criar profissionais
-      // ADMIN vê todos os usuários, SECRETARIA precisa ver médicos
+      // ADMIN, MEDICO e SECRETARIA precisam de usuários/especialidades para criar profissionais
       if (isAdmin) {
         requests.push(
           api.get('/configuracoes/usuarios'),
           api.get('/configuracoes/clinicas')
         )
-      } else if (isSecretaria) {
-        // Secretária precisa ver usuários com role MEDICO para criar profissionais
+      } else if (isSecretaria || isMedico) {
         requests.push(
           api.get('/configuracoes/usuarios').then(res => ({
             data: res.data.filter((u: Usuario) => 

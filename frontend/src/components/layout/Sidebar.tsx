@@ -25,7 +25,7 @@ const allMenuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/agenda', label: 'Agenda', icon: Calendar },
   { href: '/pacientes', label: 'Pacientes', icon: Users },
-  { href: '/profissionais', label: 'Profissionais', icon: User, roles: ['ADMIN', 'SECRETARIA'] },
+  { href: '/profissionais', label: 'Profissionais', icon: User, roles: ['ADMIN', 'MEDICO', 'SECRETARIA'] },
   { href: '/consultas', label: 'Consultas', icon: ClipboardList },
   { href: '/prontuario', label: 'Prontuário', icon: FileText },
   { href: '/relatorios', label: 'Relatórios', icon: BarChart3 },
