@@ -38,14 +38,14 @@ export class ConfiguracoesController {
 
   @Post('especialidades')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
   async createEspecialidade(@Body() createDto: CreateEspecialidadeDto) {
     return this.configuracoesService.createEspecialidade(createDto);
   }
 
   @Put('especialidades/:id')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
   async updateEspecialidade(
     @Param('id') id: string,
     @Body() updateDto: UpdateEspecialidadeDto,
@@ -55,7 +55,7 @@ export class ConfiguracoesController {
 
   @Delete('especialidades/:id')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
   async removeEspecialidade(@Param('id') id: string) {
     return this.configuracoesService.removeEspecialidade(id);
   }
