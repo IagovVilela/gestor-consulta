@@ -30,13 +30,12 @@ interface Metrics {
     id: string
     nome: string
     statusPlataforma: string
-    plano?: { nome: string } | null
     counts?: { profissionais: number; pacientes: number; consultas: number }
   }>
 }
 
 const statusLabel: Record<string, string> = {
-  TRIAL: 'Trial',
+  TRIAL: 'Ativa',
   ATIVA: 'Ativa',
   SUSPENSA: 'Suspensa',
   CANCELADA: 'Cancelada',
@@ -85,7 +84,8 @@ export default function AdminDashboardPage() {
           <CardContent>
             <div className="text-3xl font-bold">{metrics.clinicas.total}</div>
             <p className="text-xs text-muted-foreground">
-              {metrics.clinicas.ativas} ativas · {metrics.clinicas.trial} trial · {metrics.clinicas.suspensas} suspensas
+              {metrics.clinicas.ativas + metrics.clinicas.trial} ativas · {metrics.clinicas.suspensas} suspensas ·{' '}
+              {metrics.clinicas.canceladas} canceladas
             </p>
           </CardContent>
         </Card>
@@ -148,7 +148,6 @@ export default function AdminDashboardPage() {
                 <p className="font-medium">{clinica.nome}</p>
                 <p className="text-xs text-muted-foreground">
                   {statusLabel[clinica.statusPlataforma] || clinica.statusPlataforma}
-                  {clinica.plano ? ` · ${clinica.plano.nome}` : ''}
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">

@@ -30,7 +30,6 @@ interface ClinicaAdmin {
   telefone?: string | null
   slug?: string | null
   statusPlataforma: string
-  plano?: { nome: string } | null
   owner?: { name: string; email: string } | null
   counts?: {
     profissionais: number
@@ -41,7 +40,7 @@ interface ClinicaAdmin {
 }
 
 const statusLabel: Record<string, string> = {
-  TRIAL: 'Trial',
+  TRIAL: 'Ativa',
   ATIVA: 'Ativa',
   SUSPENSA: 'Suspensa',
   CANCELADA: 'Cancelada',
@@ -82,7 +81,7 @@ export default function AdminClinicasPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Clientes / Clínicas</h1>
         <p className="text-muted-foreground">
-          Gerencie status, plano, portal e acesso de cada cliente da plataforma
+          Gerencie status, portal e acesso de cada cliente. Cobrança fica no sistema de assinaturas.
         </p>
       </div>
 
@@ -103,7 +102,6 @@ export default function AdminClinicasPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="TRIAL">Trial</SelectItem>
               <SelectItem value="ATIVA">Ativa</SelectItem>
               <SelectItem value="SUSPENSA">Suspensa</SelectItem>
               <SelectItem value="CANCELADA">Cancelada</SelectItem>
@@ -125,8 +123,7 @@ export default function AdminClinicasPage() {
                 <TableRow>
                   <TableHead>Clínica</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Plano</TableHead>
-                  <TableHead>Gerente</TableHead>
+                  <TableHead>Proprietário</TableHead>
                   <TableHead>Uso</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -141,7 +138,6 @@ export default function AdminClinicasPage() {
                       </div>
                     </TableCell>
                     <TableCell>{statusLabel[clinica.statusPlataforma] || clinica.statusPlataforma}</TableCell>
-                    <TableCell>{clinica.plano?.nome || '-'}</TableCell>
                     <TableCell>
                       <div>
                         <p>{clinica.owner?.name || '-'}</p>

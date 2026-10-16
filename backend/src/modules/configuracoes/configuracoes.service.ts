@@ -504,14 +504,10 @@ export class ConfiguracoesService {
       }
       
       data.slug = await this.uniqueSlug(createDto.nome.trim(), tx);
-      const planoBasico = await tx.planos.findUnique({ where: { nome: 'Básico' } });
-      if (planoBasico) {
-        data.planoId = planoBasico.id;
-      }
-      data.statusPlataforma = 'TRIAL';
-      const trialAte = new Date();
-      trialAte.setDate(trialAte.getDate() + 14);
-      data.trialAte = trialAte;
+      // Cobrança fica em outro sistema — clínica nasce ativa, sem plano/trial
+      data.statusPlataforma = 'ATIVA';
+      data.planoId = null;
+      data.trialAte = null;
 
       console.log('💾 Tentando criar clínica no banco...');
       const createdClinica = await tx.clinicas.create({
@@ -587,18 +583,14 @@ export class ConfiguracoesService {
         }
       }
 
-      // Criar clínica primeiro
-      const planoBasico = await tx.planos.findUnique({ where: { nome: 'Básico' } });
-      const trialAte = new Date();
-      trialAte.setDate(trialAte.getDate() + 14);
-
+      // Criar clínica ativa (sem plano/trial — assinatura é gerida em outro sistema)
       const clinicaData: any = {
         id: crypto.randomUUID(),
         nome: createDto.nome.trim(),
         slug: await this.uniqueSlug(createDto.nome.trim(), tx),
-        statusPlataforma: 'TRIAL',
-        trialAte,
-        planoId: planoBasico?.id || null,
+        statusPlataforma: 'ATIVA',
+        planoId: null,
+        trialAte: null,
         updatedAt: new Date(),
       };
 

@@ -19,17 +19,6 @@ import api from '@/lib/axios'
 import { useAuthStore } from '@/lib/store/auth-store'
 import { useClinicaStore } from '@/lib/store/clinica-store'
 import { ADMIN_BACKUP_KEY } from '@/components/admin/ImpersonationBanner'
-import { format } from 'date-fns'
-
-interface Plano {
-  id: string
-  nome: string
-  precoMensal: number
-  maxMedicos: number
-  maxSecretarias: number
-  maxConsultasMes: number
-}
-
 interface ClinicaDetalhe {
   id: string
   nome: string
@@ -39,9 +28,7 @@ interface ClinicaDetalhe {
   endereco?: string | null
   slug?: string | null
   statusPlataforma: string
-  trialAte?: string | null
   observacoesAdmin?: string | null
-  plano?: Plano | null
   owner?: { id: string; name: string; email: string } | null
   users: Array<{ id: string; name: string; email: string; role: string }>
   profissionais: Array<{ id: string; nomeCompleto: string; especialidade?: string | null }>
@@ -62,25 +49,17 @@ export default function AdminClinicaDetailPage() {
   const { setSelectedClinicaId } = useClinicaStore()
 
   const [clinica, setClinica] = useState<ClinicaDetalhe | null>(null)
-  const [planos, setPlanos] = useState<Plano[]>([])
-  const [status, setStatus] = useState('TRIAL')
-  const [planoId, setPlanoId] = useState('')
+  const [status, setStatus] = useState('ATIVA')
   const [observacoes, setObservacoes] = useState('')
-  const [trialAte, setTrialAte] = useState('')
   const [saving, setSaving] = useState(false)
 
   const load = async () => {
-    const [clinicaRes, planosRes] = await Promise.all([
-      api.get(`/admin/clinicas/${params.id}`),
-      api.get('/admin/planos'),
-    ])
+    const clinicaRes = await api.get(`/admin/clinicas/${params.id}`)
     const data = clinicaRes.data as ClinicaDetalhe
     setClinica(data)
-    setPlanos(planosRes.data)
-    setStatus(data.statusPlataforma)
-    setPlanoId(data.plano?.id || '')
+    // TRIAL legado passa a ser tratado como ATIVA na UI
+    setStatus(data.statusPlataforma === 'TRIAL' ? 'ATIVA' : data.statusPlataforma)
     setObservacoes(data.observacoesAdmin || '')
-    setTrialAte(data.trialAte ? format(new Date(data.trialAte), 'yyyy-MM-dd') : '')
   }
 
   useEffect(() => {
@@ -101,9 +80,7 @@ export default function AdminClinicaDetailPage() {
     try {
       const response = await api.put(`/admin/clinicas/${params.id}`, {
         statusPlataforma: status,
-        planoId: planoId || null,
         observacoesAdmin: observacoes || null,
-        trialAte: trialAte || null,
       })
       setClinica(response.data)
       toast({ title: 'Salvo', description: 'Dados da clínica atualizados.' })
@@ -210,33 +187,18 @@ export default function AdminClinicaDetailPage() {
           <CardContent>
             <form className="space-y-4" onSubmit={save}>
               <div className="space-y-2">
-                <Label>Status</Label>
+                <Label>Status operacional</Label>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="TRIAL">Trial</SelectItem>
                     <SelectItem value="ATIVA">Ativa</SelectItem>
                     <SelectItem value="SUSPENSA">Suspensa</SelectItem>
                     <SelectItem value="CANCELADA">Cancelada</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Plano</Label>
-                <Select value={planoId} onValueChange={setPlanoId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {planos.map((plano) => (
-                      <SelectItem key={plano.id} value={plano.id}>
-                        {plano.nome} — R$ {plano.precoMensal.toFixed(2)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Trial até</Label>
-                <Input type="date" value={trialAte} onChange={(e) => setTrialAte(e.target.value)} />
+                <p className="text-xs text-muted-foreground">
+                  Cobrança e assinatura ficam no outro sistema. Use o status só para liberar ou bloquear o acesso.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>Observações internas</Label>
