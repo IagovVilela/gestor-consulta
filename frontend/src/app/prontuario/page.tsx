@@ -1316,11 +1316,18 @@ export default function ProntuarioPage() {
               ) : (
                 <div className="space-y-2">
                   {prontuariosAnteriores.map((prontuarioAnterior) => {
-                    const consulta = prontuarioAnterior.consulta || prontuarioAnterior.consultas
-                    const dataHora = consulta?.dataHora
-                    const profissional = consulta?.profissional || consulta?.profissionais
+                    const consultaRelacionada =
+                      prontuarioAnterior.consulta ||
+                      (prontuarioAnterior as { consultas?: typeof prontuarioAnterior.consulta }).consultas
+                    const dataHora = consultaRelacionada?.dataHora
+                    const profissional =
+                      consultaRelacionada?.profissional || consultaRelacionada?.profissionais
                     const nomeProfissional = profissional?.nomeCompleto || profissional?.nome || 'N/A'
-                    const especialidade = profissional?.especialidade?.nome || profissional?.especialidades?.nome || 'Sem especialidade'
+                    const especialidade =
+                      profissional?.especialidade?.nome ||
+                      (profissional as { especialidades?: { nome?: string } } | null | undefined)
+                        ?.especialidades?.nome ||
+                      'Sem especialidade'
                     
                     return (
                       <Card
