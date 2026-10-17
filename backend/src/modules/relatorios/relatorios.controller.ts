@@ -52,6 +52,20 @@ export class RelatoriosController {
       new Date(fim),
     );
   }
+
+  @Get('pagamentos')
+  @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
+  async getPagamentos(
+    @Query('inicio') inicio: string,
+    @Query('fim') fim: string,
+    @Query('profissionalId') profissionalId?: string,
+  ) {
+    return this.relatoriosService.getPagamentos(
+      new Date(inicio),
+      new Date(fim),
+      profissionalId,
+    );
+  }
 }
 
 

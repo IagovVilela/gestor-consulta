@@ -36,6 +36,16 @@ import { ptBR } from 'date-fns/locale'
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82CA9D']
 
+const formaPagamentoLabels: Record<string, string> = {
+  PIX: 'Pix',
+  DINHEIRO: 'Dinheiro',
+  DEBITO: 'Débito',
+  CREDITO: 'Crédito',
+  TRANSFERENCIA: 'Transferência',
+  CONVENIO: 'Convênio',
+  NAO_INFORMADO: 'Não informado',
+}
+
 export default function RelatoriosPage() {
   const [dataInicio, setDataInicio] = useState(
     format(startOfMonth(new Date()), 'yyyy-MM-dd')
@@ -46,6 +56,7 @@ export default function RelatoriosPage() {
   const [financeiro, setFinanceiro] = useState<any>(null)
   const [pacientes, setPacientes] = useState<any[]>([])
   const [porProfissional, setPorProfissional] = useState<any[]>([])
+  const [pagamentos, setPagamentos] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
@@ -60,23 +71,30 @@ export default function RelatoriosPage() {
         params.profissionalId = profissionalId
       }
 
-      const [atendimentosRes, financeiroRes, pacientesRes, porProfissionalRes] =
-        await Promise.all([
-          api.get('/relatorios/atendimentos', { params }),
-          api.get('/relatorios/financeiro', { params }),
-          api.get('/relatorios/pacientes'),
-          api.get('/relatorios/profissional', {
-            params: {
-              inicio: params.inicio,
-              fim: params.fim,
-            },
-          }),
-        ])
+      const [
+        atendimentosRes,
+        financeiroRes,
+        pacientesRes,
+        porProfissionalRes,
+        pagamentosRes,
+      ] = await Promise.all([
+        api.get('/relatorios/atendimentos', { params }),
+        api.get('/relatorios/financeiro', { params }),
+        api.get('/relatorios/pacientes'),
+        api.get('/relatorios/profissional', {
+          params: {
+            inicio: params.inicio,
+            fim: params.fim,
+          },
+        }),
+        api.get('/relatorios/pagamentos', { params }),
+      ])
 
       setAtendimentos(atendimentosRes.data)
       setFinanceiro(financeiroRes.data)
       setPacientes(pacientesRes.data)
       setPorProfissional(porProfissionalRes.data)
+      setPagamentos(Array.isArray(pagamentosRes.data) ? pagamentosRes.data : [])
     } catch (error) {
       console.error('Erro ao carregar relatórios:', error)
       toast({
@@ -118,6 +136,12 @@ export default function RelatoriosPage() {
     })
   )
 
+  const pagamentosChartData = pagamentos.map((item) => ({
+    name: formaPagamentoLabels[item.formaPagamento] || item.formaPagamento,
+    value: item.quantidade,
+    total: item.total,
+  }))
+
   const exportToCSV = () => {
     try {
       // Preparar dados para CSV
@@ -138,7 +162,7 @@ export default function RelatoriosPage() {
       
       // Detalhamento de atendimentos
       csvData.push('DETALHAMENTO DE ATENDIMENTOS')
-      csvData.push('Data/Hora,Paciente,Profissional,Especialidade,Valor,Status')
+      csvData.push('Data/Hora,Paciente,Profissional,Especialidade,Valor,Status,Pagamento')
       
       atendimentos.forEach((atendimento: any) => {
         const dataHora = format(new Date(atendimento.dataHora), 'dd/MM/yyyy HH:mm', { locale: ptBR })
@@ -147,11 +171,29 @@ export default function RelatoriosPage() {
         const especialidade = atendimento.profissionais?.especialidades?.nome || atendimento.profissionais?.especialidade?.nome || 'N/A'
         const valor = atendimento.valor?.toFixed(2) || '0.00'
         const status = atendimento.status || 'N/A'
+        const forma = atendimento.formaPagamento || 'NAO_INFORMADO'
+        let pagamento = formaPagamentoLabels[forma] || forma
+        if (forma === 'CONVENIO' && atendimento.nomeConvenio) {
+          pagamento = `Convênio: ${atendimento.nomeConvenio}`
+        }
         
-        csvData.push(`"${dataHora}","${paciente}","${profissional}","${especialidade}",R$ ${valor},"${status}"`)
+        csvData.push(`"${dataHora}","${paciente}","${profissional}","${especialidade}",R$ ${valor},"${status}","${pagamento}"`)
       })
       
       csvData.push('')
+
+      if (pagamentos.length > 0) {
+        csvData.push('PAGAMENTOS POR FORMA')
+        csvData.push('Forma,Quantidade,Total')
+        pagamentos.forEach((item: any) => {
+          const nome =
+            formaPagamentoLabels[item.formaPagamento] || item.formaPagamento
+          csvData.push(
+            `${nome},${item.quantidade},R$ ${(item.total || 0).toFixed(2)}`,
+          )
+        })
+        csvData.push('')
+      }
       
       // Atendimentos por profissional
       if (porProfissional && porProfissional.length > 0) {
@@ -554,6 +596,85 @@ export default function RelatoriosPage() {
                       <Tooltip />
                     </PieChart>
                   </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Formas de pagamento</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {pagamentosChartData.length === 0 ? (
+                    <p className="py-8 text-center text-muted-foreground">
+                      Nenhum atendimento com pagamento no período
+                    </p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={pagamentosChartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) =>
+                            `${name} ${(percent * 100).toFixed(0)}%`
+                          }
+                          outerRadius={90}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {pagamentosChartData.map((_, index) => (
+                            <Cell
+                              key={`pay-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value: number, _name, props: any) => [
+                            `${value} atendimento(s) — R$ ${(
+                              props?.payload?.total || 0
+                            ).toFixed(2)}`,
+                            'Quantidade',
+                          ]}
+                        />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Resumo por forma de pagamento</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {pagamentos.length === 0 ? (
+                    <p className="py-8 text-center text-muted-foreground">
+                      Sem dados no período
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {pagamentos.map((item: any) => (
+                        <div
+                          key={item.formaPagamento}
+                          className="flex items-center justify-between rounded border p-2"
+                        >
+                          <span className="font-medium">
+                            {formaPagamentoLabels[item.formaPagamento] ||
+                              item.formaPagamento}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {item.quantidade} · R${' '}
+                            {(item.total || 0).toFixed(2).replace('.', ',')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

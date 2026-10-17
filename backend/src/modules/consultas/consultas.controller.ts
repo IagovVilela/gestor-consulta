@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ClinicaGuard } from '../../common/guards/clinica.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { consultas_status } from '@prisma/client';
+import { FinalizarConsultaDto } from './dto/finalizar-consulta.dto';
 
 @UseGuards(JwtAuthGuard, ClinicaGuard)
 @Controller('consultas')
@@ -65,8 +66,11 @@ export class ConsultasController {
   }
 
   @Post(':id/finalizar')
-  async finalizarAtendimento(@Param('id') id: string) {
-    return this.consultasService.finalizarAtendimento(id);
+  async finalizarAtendimento(
+    @Param('id') id: string,
+    @Body() dto: FinalizarConsultaDto,
+  ) {
+    return this.consultasService.finalizarAtendimento(id, dto);
   }
 
   @Post(':id/arquivar')

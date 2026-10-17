@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -19,15 +21,35 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/use-toast'
-import { Play, CheckCircle, XCircle, Eye, Archive, ArchiveRestore } from 'lucide-react'
+import { Play, CheckCircle, XCircle, Archive, ArchiveRestore } from 'lucide-react'
 import api from '@/lib/axios'
+
+type FormaPagamento =
+  | 'PIX'
+  | 'DINHEIRO'
+  | 'DEBITO'
+  | 'CREDITO'
+  | 'TRANSFERENCIA'
+  | 'CONVENIO'
+  | 'NAO_INFORMADO'
 
 interface Consulta {
   id: string
   dataHora: string
   status: string
   archived?: boolean
+  formaPagamento?: FormaPagamento | null
+  nomeConvenio?: string | null
+  porConvenio?: boolean
   paciente?: {
     id: string
     nome: string
@@ -59,11 +81,44 @@ const statusColors: Record<string, string> = {
   FALTA: 'bg-orange-100 text-orange-800',
 }
 
+const formaPagamentoLabels: Record<FormaPagamento, string> = {
+  PIX: 'Pix',
+  DINHEIRO: 'Dinheiro',
+  DEBITO: 'Débito',
+  CREDITO: 'Crédito',
+  TRANSFERENCIA: 'Transferência',
+  CONVENIO: 'Convênio',
+  NAO_INFORMADO: 'Não informado',
+}
+
+const FORMAS_FINALIZAR: FormaPagamento[] = [
+  'PIX',
+  'DINHEIRO',
+  'DEBITO',
+  'CREDITO',
+  'TRANSFERENCIA',
+  'CONVENIO',
+]
+
+function formatPagamento(consulta: Consulta): string {
+  if (consulta.status !== 'ATENDIDA') return '—'
+  const forma = consulta.formaPagamento || 'NAO_INFORMADO'
+  const label = formaPagamentoLabels[forma] || forma
+  if (forma === 'CONVENIO' && consulta.nomeConvenio) {
+    return `Convênio: ${consulta.nomeConvenio}`
+  }
+  return label
+}
+
 export default function ConsultasPage() {
   const [consultas, setConsultas] = useState<Consulta[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showArchived, setShowArchived] = useState(false)
+  const [finalizandoId, setFinalizandoId] = useState<string | null>(null)
+  const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>('PIX')
+  const [nomeConvenio, setNomeConvenio] = useState('')
+  const [savingFinalizar, setSavingFinalizar] = useState(false)
   const { toast } = useToast()
 
   const loadConsultas = useCallback(async () => {
@@ -77,24 +132,25 @@ export default function ConsultasPage() {
         params.includeArchived = 'true'
       }
       const response = await api.get('/consultas', { params })
-      console.log('📋 Consultas recebidas:', response.data)
-      console.log('📊 Total:', Array.isArray(response.data) ? response.data.length : 'Não é array')
-      
-      // Mapear os dados para o formato esperado pelo frontend
-      const mappedConsultas = Array.isArray(response.data) ? response.data.map((c: any) => {
-        const profissional = c.profissionais || c.profissional;
-        return {
-          ...c,
-          paciente: c.pacientes || c.paciente,
-          profissional: profissional ? {
-            ...profissional,
-            nome: profissional.nomeCompleto || profissional.nome,
-            especialidade: profissional.especialidades || profissional.especialidade,
-          } : null,
-        };
-      }) : []
-      
-      console.log('✅ Consultas mapeadas:', mappedConsultas)
+
+      const mappedConsultas = Array.isArray(response.data)
+        ? response.data.map((c: any) => {
+            const profissional = c.profissionais || c.profissional
+            return {
+              ...c,
+              paciente: c.pacientes || c.paciente,
+              profissional: profissional
+                ? {
+                    ...profissional,
+                    nome: profissional.nomeCompleto || profissional.nome,
+                    especialidade:
+                      profissional.especialidades || profissional.especialidade,
+                  }
+                : null,
+            }
+          })
+        : []
+
       setConsultas(mappedConsultas)
     } catch (error) {
       console.error('Erro ao carregar consultas:', error)
@@ -146,20 +202,44 @@ export default function ConsultasPage() {
     }
   }
 
-  const handleFinalizar = async (id: string) => {
+  const openFinalizar = (id: string) => {
+    setFinalizandoId(id)
+    setFormaPagamento('PIX')
+    setNomeConvenio('')
+  }
+
+  const confirmFinalizar = async () => {
+    if (!finalizandoId) return
+    if (formaPagamento === 'CONVENIO' && !nomeConvenio.trim()) {
+      toast({
+        title: 'Atenção',
+        description: 'Informe o nome do convênio',
+        variant: 'destructive',
+      })
+      return
+    }
     try {
-      await api.post(`/consultas/${id}/finalizar`)
+      setSavingFinalizar(true)
+      await api.post(`/consultas/${finalizandoId}/finalizar`, {
+        formaPagamento,
+        nomeConvenio:
+          formaPagamento === 'CONVENIO' ? nomeConvenio.trim() : undefined,
+      })
       toast({
         title: 'Sucesso',
         description: 'Atendimento finalizado',
       })
+      setFinalizandoId(null)
       loadConsultas()
     } catch (error: any) {
       toast({
         title: 'Erro',
-        description: error.response?.data?.message || 'Erro ao finalizar atendimento',
+        description:
+          error.response?.data?.message || 'Erro ao finalizar atendimento',
         variant: 'destructive',
       })
+    } finally {
+      setSavingFinalizar(false)
     }
   }
 
@@ -191,7 +271,8 @@ export default function ConsultasPage() {
     } catch (error: any) {
       toast({
         title: 'Erro',
-        description: error.response?.data?.message || 'Erro ao desarquivar consulta',
+        description:
+          error.response?.data?.message || 'Erro ao desarquivar consulta',
         variant: 'destructive',
       })
     }
@@ -227,7 +308,10 @@ export default function ConsultasPage() {
                 onChange={(e) => setShowArchived(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
               />
-              <label htmlFor="showArchived" className="text-sm font-medium cursor-pointer">
+              <label
+                htmlFor="showArchived"
+                className="text-sm font-medium cursor-pointer"
+              >
                 Mostrar arquivadas
               </label>
             </div>
@@ -270,6 +354,7 @@ export default function ConsultasPage() {
                     <TableHead>Especialidade</TableHead>
                     <TableHead>Data/Hora</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Pagamento</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -279,18 +364,27 @@ export default function ConsultasPage() {
                       <TableCell className="font-medium">
                         {consulta.paciente?.nome || 'N/A'}
                       </TableCell>
-                      <TableCell>{consulta.profissional?.nome || 'N/A'}</TableCell>
                       <TableCell>
-                        {consulta.profissional?.especialidade?.nome || 'Sem especialidade'}
+                        {consulta.profissional?.nome || 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {consulta.profissional?.especialidade?.nome ||
+                          'Sem especialidade'}
                       </TableCell>
                       <TableCell>{formatDateTime(consulta.dataHora)}</TableCell>
                       <TableCell>
                         <span
                           className={`rounded-full px-2 py-1 text-xs font-medium ${
-                            statusColors[consulta.status] || 'bg-gray-100 text-gray-800'
+                            statusColors[consulta.status] ||
+                            'bg-gray-100 text-gray-800'
                           }`}
                         >
                           {statusLabels[consulta.status] || consulta.status}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-800">
+                          {formatPagamento(consulta)}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
@@ -309,7 +403,7 @@ export default function ConsultasPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleFinalizar(consulta.id)}
+                              onClick={() => openFinalizar(consulta.id)}
                             >
                               <CheckCircle className="mr-2 h-4 w-4" />
                               Finalizar
@@ -370,6 +464,61 @@ export default function ConsultasPage() {
             )}
           </CardContent>
         </Card>
+
+        <Dialog
+          open={!!finalizandoId}
+          onOpenChange={(open) => {
+            if (!open) setFinalizandoId(null)
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Finalizar atendimento</DialogTitle>
+              <DialogDescription>
+                Informe como a consulta foi paga para registrar no relatório.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>Forma de pagamento</Label>
+                <Select
+                  value={formaPagamento}
+                  onValueChange={(v) => setFormaPagamento(v as FormaPagamento)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FORMAS_FINALIZAR.map((forma) => (
+                      <SelectItem key={forma} value={forma}>
+                        {formaPagamentoLabels[forma]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {formaPagamento === 'CONVENIO' && (
+                <div className="space-y-2">
+                  <Label htmlFor="nomeConvenio">Nome do convênio</Label>
+                  <Input
+                    id="nomeConvenio"
+                    value={nomeConvenio}
+                    onChange={(e) => setNomeConvenio(e.target.value)}
+                    placeholder="Ex: Unimed, Bradesco Saúde"
+                  />
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setFinalizandoId(null)}>
+                Cancelar
+              </Button>
+              <Button onClick={confirmFinalizar} disabled={savingFinalizar}>
+                {savingFinalizar ? 'Salvando...' : 'Confirmar'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   )

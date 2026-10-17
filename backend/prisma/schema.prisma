@@ -98,6 +98,7 @@ model consultas {
   valor          Float?
   porConvenio    Boolean          @default(false)
   nomeConvenio   String?
+  formaPagamento consultas_forma_pagamento?
   archived       Boolean          @default(false)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime
@@ -344,4 +345,14 @@ enum consultas_status {
   ATENDIDA
   CANCELADA
   FALTA
+}
+
+enum consultas_forma_pagamento {
+  PIX
+  DINHEIRO
+  DEBITO
+  CREDITO
+  TRANSFERENCIA
+  CONVENIO
+  NAO_INFORMADO
 }

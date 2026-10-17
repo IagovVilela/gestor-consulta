@@ -38,6 +38,9 @@ export class RelatoriosService {
       select: {
         valor: true,
         dataHora: true,
+        formaPagamento: true,
+        porConvenio: true,
+        nomeConvenio: true,
       },
     });
 
@@ -48,6 +51,43 @@ export class RelatoriosService {
       total,
       quantidade: consultas.length,
     };
+  }
+
+  async getPagamentos(inicio: Date, fim: Date, profissionalId?: string) {
+    const consultas = await this.prisma.consultas.findMany({
+      where: {
+        dataHora: {
+          gte: inicio,
+          lte: fim,
+        },
+        status: 'ATENDIDA',
+        ...(profissionalId && { profissionalId }),
+      },
+      select: {
+        formaPagamento: true,
+        valor: true,
+        nomeConvenio: true,
+      },
+    });
+
+    const mapa = new Map<
+      string,
+      { formaPagamento: string; quantidade: number; total: number }
+    >();
+
+    for (const c of consultas) {
+      const key = c.formaPagamento || 'NAO_INFORMADO';
+      const atual = mapa.get(key) || {
+        formaPagamento: key,
+        quantidade: 0,
+        total: 0,
+      };
+      atual.quantidade += 1;
+      atual.total += c.valor || 0;
+      mapa.set(key, atual);
+    }
+
+    return Array.from(mapa.values()).sort((a, b) => b.quantidade - a.quantidade);
   }
 
   async getPacientes() {

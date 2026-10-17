@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { consultas_status } from '@prisma/client';
+import { consultas_forma_pagamento, consultas_status } from '@prisma/client';
+import { FinalizarConsultaDto } from './dto/finalizar-consulta.dto';
 
 @Injectable()
 export class ConsultasService {
@@ -81,11 +82,35 @@ export class ConsultasService {
     });
   }
 
-  async finalizarAtendimento(id: string) {
+  async finalizarAtendimento(id: string, dto: FinalizarConsultaDto) {
+    if (!dto?.formaPagamento) {
+      throw new BadRequestException('Informe a forma de pagamento');
+    }
+
+    const formasValidas: consultas_forma_pagamento[] = [
+      'PIX',
+      'DINHEIRO',
+      'DEBITO',
+      'CREDITO',
+      'TRANSFERENCIA',
+      'CONVENIO',
+    ];
+    if (!formasValidas.includes(dto.formaPagamento)) {
+      throw new BadRequestException('Forma de pagamento inválida');
+    }
+
+    const isConvenio = dto.formaPagamento === 'CONVENIO';
+    if (isConvenio && !dto.nomeConvenio?.trim()) {
+      throw new BadRequestException('Informe o nome do convênio');
+    }
+
     return this.prisma.consultas.update({
       where: { id },
-      data: { 
+      data: {
         status: 'ATENDIDA',
+        formaPagamento: dto.formaPagamento,
+        porConvenio: isConvenio,
+        nomeConvenio: isConvenio ? dto.nomeConvenio!.trim() : null,
         updatedAt: new Date(),
       },
     });
