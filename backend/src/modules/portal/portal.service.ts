@@ -334,22 +334,30 @@ export class PortalService {
     fim.setHours(23, 59, 59, 999);
     const diaSemana = dia.getDay();
 
-    const [expedienteClinica, agendasProf] = await Promise.all([
-      this.prisma.clinica_expedientes.findMany({
-        where: { clinicaId, active: true, diaSemana },
-      }),
-      this.prisma.agendas.findMany({
-        where: { profissionalId, active: true, diaSemana },
-      }),
-    ]);
+    const [expedienteClinica, agendasProf, totalExpedienteClinica] =
+      await Promise.all([
+        this.prisma.clinica_expedientes.findMany({
+          where: { clinicaId, active: true, diaSemana },
+        }),
+        this.prisma.agendas.findMany({
+          where: { profissionalId, active: true, diaSemana },
+        }),
+        this.prisma.clinica_expedientes.count({
+          where: { clinicaId, active: true },
+        }),
+      ]);
 
+    // Se a clínica já configurou expediente, dia sem registro = fechado.
+    // Só usa o padrão quando ainda não há nenhum expediente cadastrado.
     const janelasClinica: JanelaExpediente[] = expedienteClinica.length
       ? expedienteClinica.map((item) => ({
           inicio: item.horaInicio,
           fim: item.horaFim,
           step: item.duracaoConsulta || 30,
         }))
-      : janelasPadrao(diaSemana);
+      : totalExpedienteClinica > 0
+        ? []
+        : janelasPadrao(diaSemana);
 
     const janelasProf: JanelaExpediente[] = agendasProf.map((agenda) => ({
       inicio: agenda.horaInicio,
