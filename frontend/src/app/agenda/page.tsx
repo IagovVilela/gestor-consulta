@@ -419,7 +419,27 @@ export default function AgendaPage() {
             >
               Próxima
             </Button>
-            <Button onClick={() => setIsDialogOpen(true)}>
+            <Button
+              onClick={() => {
+                const filterClinicaId =
+                  user?.role === 'ADMIN'
+                    ? selectedClinicaId || user?.clinicaId || ''
+                    : user?.clinicaId || ''
+                reset({
+                  pacienteId: '',
+                  profissionalId: '',
+                  clinicaId: filterClinicaId,
+                  data: format(new Date(), 'yyyy-MM-dd'),
+                  hora: '',
+                  observacoes: '',
+                  valor: undefined,
+                  porConvenio: false,
+                  nomeConvenio: '',
+                })
+                setHorariosDisponiveis([])
+                setIsDialogOpen(true)
+              }}
+            >
               <Plus className="mr-2 h-4 w-4" />
               Nova Consulta
             </Button>
