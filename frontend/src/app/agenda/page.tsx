@@ -333,7 +333,7 @@ export default function AgendaPage() {
       })
       
       console.log('✅ Consulta criada:', response.data)
-      console.log('📅 Data/Hora da consulta:', new Date(data.dataHora).toISOString())
+      console.log('📅 Data/Hora da consulta:', dataHoraLocal.toISOString())
       console.log('🏥 Clínica ID:', clinicaId)
       
       toast({
