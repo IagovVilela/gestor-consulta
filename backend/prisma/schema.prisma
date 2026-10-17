@@ -63,10 +63,28 @@ model clinicas {
   users             users[]
   owner             users?                   @relation("ClinicaOwner", fields: [ownerId], references: [id])
   plano             planos?                  @relation(fields: [planoId], references: [id])
+  expedientes       clinica_expedientes[]
 
   @@index([ownerId])
   @@index([planoId])
   @@index([statusPlataforma])
+}
+
+model clinica_expedientes {
+  id              String   @id
+  clinicaId       String
+  diaSemana       Int
+  horaInicio      String
+  horaFim         String
+  duracaoConsulta Int      @default(30)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime
+  clinicas        clinicas @relation(fields: [clinicaId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicaId, diaSemana, horaInicio, horaFim])
+  @@index([clinicaId])
+  @@index([clinicaId, diaSemana])
 }
 
 model consultas {

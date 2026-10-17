@@ -18,6 +18,7 @@ import { UpdateEspecialidadeDto } from './dto/update-especialidade.dto';
 import { CreateClinicaDto } from './dto/create-clinica.dto';
 import { CreateClinicaCompletoDto } from './dto/create-clinica-completo.dto';
 import { UpdateClinicaDto } from './dto/update-clinica.dto';
+import { UpsertExpedienteDto } from './dto/upsert-expediente.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -174,6 +175,41 @@ export class ConfiguracoesController {
     }
     const slug = await this.configuracoesService.ensureClinicSlug(user.clinicaId);
     return { slug, path: `/c/${slug}` };
+  }
+
+  @Get('expediente')
+  @UseGuards(RolesGuard, ClinicAdminGuard)
+  @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
+  async getExpediente(
+    @CurrentUser() user?: any,
+    @Query('clinicaId') clinicaId?: string,
+  ) {
+    const id =
+      user?.role?.toUpperCase() === 'ADMIN'
+        ? clinicaId || user?.clinicaId
+        : user?.clinicaId;
+    if (!id) {
+      throw new BadRequestException('Clínica não informada');
+    }
+    return this.configuracoesService.getExpedienteClinica(id);
+  }
+
+  @Put('expediente')
+  @UseGuards(RolesGuard, ClinicAdminGuard)
+  @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
+  async upsertExpediente(
+    @Body() dto: UpsertExpedienteDto,
+    @CurrentUser() user?: any,
+    @Query('clinicaId') clinicaId?: string,
+  ) {
+    const id =
+      user?.role?.toUpperCase() === 'ADMIN'
+        ? clinicaId || user?.clinicaId
+        : user?.clinicaId;
+    if (!id) {
+      throw new BadRequestException('Clínica não informada');
+    }
+    return this.configuracoesService.upsertExpedienteClinica(id, dto);
   }
 
   @Get('clinicas')

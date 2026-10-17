@@ -31,7 +31,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { MaskedInput } from '@/components/ui/masked-input'
 import { useToast } from '@/components/ui/use-toast'
-import { Plus, Search, Edit, Trash2, Eye, User } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Eye, User, Clock } from 'lucide-react'
 import api from '@/lib/axios'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -39,6 +39,13 @@ import * as z from 'zod'
 import { formatPhone, formatCRM } from '@/lib/masks'
 import { useAuthStore } from '@/lib/store/auth-store'
 import { useClinica } from '@/contexts/clinica-context'
+import {
+  ExpedienteEditor,
+  ExpedienteItem,
+  defaultExpedienteVazio,
+  fromApiExpediente,
+  toApiExpediente,
+} from '@/components/expediente/ExpedienteEditor'
 
 // Schema para criar profissional completo (usuário + profissional)
 const profissionalCompletoSchema = z.object({
@@ -118,6 +125,11 @@ export default function ProfissionaisPage() {
     useState<Profissional | null>(null)
   const [viewingProfissional, setViewingProfissional] =
     useState<Profissional | null>(null)
+  const [expedienteProfissional, setExpedienteProfissional] =
+    useState<Profissional | null>(null)
+  const [expediente, setExpediente] = useState<ExpedienteItem[]>(defaultExpedienteVazio())
+  const [loadingExpediente, setLoadingExpediente] = useState(false)
+  const [savingExpediente, setSavingExpediente] = useState(false)
   const { toast } = useToast()
   const { user } = useAuthStore()
   const { selectedClinicaId, clinica } = useClinica()
@@ -127,6 +139,8 @@ export default function ProfissionaisPage() {
   const isMedico = user?.role === 'MEDICO' || user?.role === 'medico'
   const isClinicOwner = user?.isClinicOwner === true
   const canCreateProfissional =
+    isAdmin || isSecretaria || isClinicOwner
+  const canEditExpediente =
     isAdmin || isSecretaria || isClinicOwner
 
   // Form para criar profissional completo (usuário + profissional)
@@ -430,6 +444,56 @@ export default function ProfissionaisPage() {
     }
   }
 
+  const openExpediente = async (profissional: Profissional) => {
+    setExpedienteProfissional(profissional)
+    setExpediente(defaultExpedienteVazio())
+    setLoadingExpediente(true)
+    try {
+      const response = await api.get(`/profissionais/${profissional.id}/expediente`)
+      setExpediente(
+        fromApiExpediente(
+          Array.isArray(response.data) ? response.data : [],
+          defaultExpedienteVazio(),
+        ),
+      )
+    } catch {
+      setExpediente(defaultExpedienteVazio())
+    } finally {
+      setLoadingExpediente(false)
+    }
+  }
+
+  const saveExpediente = async () => {
+    if (!expedienteProfissional) return
+    try {
+      setSavingExpediente(true)
+      const response = await api.put(
+        `/profissionais/${expedienteProfissional.id}/expediente`,
+        { itens: toApiExpediente(expediente) },
+      )
+      setExpediente(
+        fromApiExpediente(
+          Array.isArray(response.data) ? response.data : [],
+          defaultExpedienteVazio(),
+        ),
+      )
+      toast({
+        title: 'Sucesso',
+        description: 'Expediente do profissional salvo com sucesso',
+      })
+      setExpedienteProfissional(null)
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description:
+          error.response?.data?.message || 'Erro ao salvar expediente',
+        variant: 'destructive',
+      })
+    } finally {
+      setSavingExpediente(false)
+    }
+  }
+
   const handleNew = () => {
     setEditingProfissional(null)
     resetCompleto({
@@ -526,6 +590,16 @@ export default function ProfissionaisPage() {
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
+                            {canEditExpediente && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Expediente"
+                                onClick={() => openExpediente(profissional)}
+                              >
+                                <Clock className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -966,6 +1040,51 @@ export default function ProfissionaisPage() {
             )}
             <DialogFooter>
               <Button onClick={() => setViewingProfissional(null)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={!!expedienteProfissional}
+          onOpenChange={(open) => {
+            if (!open) setExpedienteProfissional(null)
+          }}
+        >
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Expediente — {expedienteProfissional?.nomeCompleto}
+              </DialogTitle>
+              <DialogDescription>
+                Horários em que este profissional atende. Os slots do portal ficam
+                na interseção com o expediente da clínica.
+              </DialogDescription>
+            </DialogHeader>
+            {loadingExpediente ? (
+              <div className="py-8 text-center text-muted-foreground">
+                Carregando...
+              </div>
+            ) : (
+              <ExpedienteEditor
+                value={expediente}
+                onChange={setExpediente}
+                title="Agenda do profissional"
+                description="Deixe um dia desativado se o profissional não atender nesse dia. Sem expediente próprio, vale o da clínica."
+              />
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setExpedienteProfissional(null)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={saveExpediente}
+                disabled={savingExpediente || loadingExpediente}
+              >
+                {savingExpediente ? 'Salvando...' : 'Salvar expediente'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

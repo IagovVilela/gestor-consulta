@@ -8,6 +8,8 @@ import { UpdateClinicaDto } from './dto/update-clinica.dto';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { createClinicSlug } from '../../common/utils/clinic-slug';
+import { minutos, validarHora } from '../../common/utils/expediente';
+import { UpsertExpedienteDto } from './dto/upsert-expediente.dto';
 
 @Injectable()
 export class ConfiguracoesService {
@@ -970,6 +972,51 @@ export class ConfiguracoesService {
         error.message || 'Erro ao excluir clínica. Tente novamente.'
       );
     }
+  }
+
+  async getExpedienteClinica(clinicaId: string) {
+    return this.prisma.clinica_expedientes.findMany({
+      where: { clinicaId, active: true },
+      orderBy: [{ diaSemana: 'asc' }, { horaInicio: 'asc' }],
+    });
+  }
+
+  async upsertExpedienteClinica(clinicaId: string, dto: UpsertExpedienteDto) {
+    const clinica = await this.prisma.clinicas.findUnique({ where: { id: clinicaId } });
+    if (!clinica || !clinica.active) {
+      throw new BadRequestException('Clínica não encontrada');
+    }
+
+    for (const item of dto.itens) {
+      if (!validarHora(item.horaInicio) || !validarHora(item.horaFim)) {
+        throw new BadRequestException('Horário inválido. Use o formato HH:mm');
+      }
+      if (minutos(item.horaInicio) >= minutos(item.horaFim)) {
+        throw new BadRequestException(
+          `Horário inválido no dia ${item.diaSemana}: início deve ser antes do fim`,
+        );
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.clinica_expedientes.deleteMany({ where: { clinicaId } });
+      if (dto.itens.length === 0) return;
+
+      await tx.clinica_expedientes.createMany({
+        data: dto.itens.map((item) => ({
+          id: crypto.randomUUID(),
+          clinicaId,
+          diaSemana: item.diaSemana,
+          horaInicio: item.horaInicio,
+          horaFim: item.horaFim,
+          duracaoConsulta: item.duracaoConsulta || 30,
+          active: true,
+          updatedAt: new Date(),
+        })),
+      });
+    });
+
+    return this.getExpedienteClinica(clinicaId);
   }
 }
 

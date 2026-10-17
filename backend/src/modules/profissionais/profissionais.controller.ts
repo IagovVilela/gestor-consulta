@@ -13,6 +13,7 @@ import { ProfissionaisService } from './profissionais.service';
 import { CreateProfissionalDto } from './dto/create-profissional.dto';
 import { CreateProfissionalCompletoDto } from './dto/create-profissional-completo.dto';
 import { UpdateProfissionalDto } from './dto/update-profissional.dto';
+import { UpsertExpedienteDto } from '../configuracoes/dto/upsert-expediente.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ClinicaGuard } from '../../common/guards/clinica.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -106,6 +107,23 @@ export class ProfissionaisController {
     const result = await this.profissionaisService.findAllActive(filterClinicaId, user?.id);
     console.log('findAllActive - Resultado:', result.length, 'profissionais encontrados');
     return result;
+  }
+
+  @Get(':id/expediente')
+  @UseGuards(RolesGuard, ClinicAdminGuard)
+  @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
+  async getExpediente(@Param('id') id: string) {
+    return this.profissionaisService.getExpediente(id);
+  }
+
+  @Put(':id/expediente')
+  @UseGuards(RolesGuard, ClinicAdminGuard)
+  @Roles('ADMIN', 'MEDICO', 'SECRETARIA')
+  async upsertExpediente(
+    @Param('id') id: string,
+    @Body() dto: UpsertExpedienteDto,
+  ) {
+    return this.profissionaisService.upsertExpediente(id, dto);
   }
 
   @Get(':id')

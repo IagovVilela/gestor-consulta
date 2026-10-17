@@ -3,6 +3,8 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateProfissionalDto } from './dto/create-profissional.dto';
 import { CreateProfissionalCompletoDto } from './dto/create-profissional-completo.dto';
 import { UpdateProfissionalDto } from './dto/update-profissional.dto';
+import { UpsertExpedienteDto } from '../configuracoes/dto/upsert-expediente.dto';
+import { minutos, validarHora } from '../../common/utils/expediente';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
@@ -405,6 +407,60 @@ export class ProfissionaisService {
       where: { id },
       data: { active: false },
     });
+  }
+
+  async getExpediente(profissionalId: string) {
+    const profissional = await this.prisma.profissionais.findUnique({
+      where: { id: profissionalId },
+    });
+    if (!profissional || !profissional.active) {
+      throw new NotFoundException('Profissional não encontrado');
+    }
+
+    return this.prisma.agendas.findMany({
+      where: { profissionalId, active: true },
+      orderBy: [{ diaSemana: 'asc' }, { horaInicio: 'asc' }],
+    });
+  }
+
+  async upsertExpediente(profissionalId: string, dto: UpsertExpedienteDto) {
+    const profissional = await this.prisma.profissionais.findUnique({
+      where: { id: profissionalId },
+    });
+    if (!profissional || !profissional.active) {
+      throw new NotFoundException('Profissional não encontrado');
+    }
+
+    for (const item of dto.itens) {
+      if (!validarHora(item.horaInicio) || !validarHora(item.horaFim)) {
+        throw new BadRequestException('Horário inválido. Use o formato HH:mm');
+      }
+      if (minutos(item.horaInicio) >= minutos(item.horaFim)) {
+        throw new BadRequestException(
+          `Horário inválido no dia ${item.diaSemana}: início deve ser antes do fim`,
+        );
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.agendas.deleteMany({ where: { profissionalId } });
+      if (dto.itens.length === 0) return;
+
+      await tx.agendas.createMany({
+        data: dto.itens.map((item) => ({
+          id: crypto.randomUUID(),
+          profissionalId,
+          diaSemana: item.diaSemana,
+          horaInicio: item.horaInicio,
+          horaFim: item.horaFim,
+          duracaoConsulta: item.duracaoConsulta || 30,
+          active: true,
+          updatedAt: new Date(),
+        })),
+      });
+    });
+
+    return this.getExpediente(profissionalId);
   }
 }
 

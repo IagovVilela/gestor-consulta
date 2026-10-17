@@ -8,16 +8,16 @@ import { PortalTokenService, PortalTokenPayload } from './portal-token.service';
 import { AgendarDto } from './dto/agendar.dto';
 import { AcessarDto } from './dto/acessar.dto';
 import { AlterarConsultaDto } from './dto/alterar-consulta.dto';
+import {
+  gerarSlots,
+  intersectListas,
+  janelasPadrao,
+  JanelaExpediente,
+} from '../../common/utils/expediente';
 import * as crypto from 'crypto';
 
 const STATUS_ABERTOS = ['AGENDADA', 'CONFIRMADA'] as const;
 const STATUS_LIVRES = ['CANCELADA', 'FALTA'] as const;
-
-interface Janela {
-  inicio: string;
-  fim: string;
-  step: number;
-}
 
 @Injectable()
 export class PortalService {
@@ -54,7 +54,12 @@ export class PortalService {
     const clinica = await this.findClinica(slug);
     await this.findProfissional(clinica.id, profissionalId);
     const dia = this.parseData(data);
-    const slots = await this.slotsDisponiveis(profissionalId, dia, ignoreConsultaId);
+    const slots = await this.slotsDisponiveis(
+      clinica.id,
+      profissionalId,
+      dia,
+      ignoreConsultaId,
+    );
     return { horarios: slots };
   }
 
@@ -297,32 +302,65 @@ export class PortalService {
       throw new BadRequestException('Escolha um horário futuro');
     }
 
-    const slots = await this.slotsDisponiveis(profissionalId, quando, ignoreConsultaId);
+    const profissional = await this.prisma.profissionais.findUnique({
+      where: { id: profissionalId },
+      select: { clinicaId: true },
+    });
+    if (!profissional) {
+      throw new BadRequestException('Profissional inválido');
+    }
+
+    const slots = await this.slotsDisponiveis(
+      profissional.clinicaId,
+      profissionalId,
+      quando,
+      ignoreConsultaId,
+    );
     const hora = this.formatHora(quando);
     if (!slots.includes(hora)) {
       throw new BadRequestException('Horário indisponível');
     }
   }
 
-  private async slotsDisponiveis(profissionalId: string, dia: Date, ignoreConsultaId?: string) {
+  private async slotsDisponiveis(
+    clinicaId: string,
+    profissionalId: string,
+    dia: Date,
+    ignoreConsultaId?: string,
+  ) {
     const inicio = new Date(dia);
     inicio.setHours(0, 0, 0, 0);
     const fim = new Date(dia);
     fim.setHours(23, 59, 59, 999);
+    const diaSemana = dia.getDay();
 
-    const agendas = await this.prisma.agendas.findMany({
-      where: { profissionalId, active: true, diaSemana: dia.getDay() },
-    });
+    const [expedienteClinica, agendasProf] = await Promise.all([
+      this.prisma.clinica_expedientes.findMany({
+        where: { clinicaId, active: true, diaSemana },
+      }),
+      this.prisma.agendas.findMany({
+        where: { profissionalId, active: true, diaSemana },
+      }),
+    ]);
 
-    const janelas: Janela[] = agendas.length
-      ? agendas.map((agenda) => ({
-          inicio: agenda.horaInicio,
-          fim: agenda.horaFim,
-          step: agenda.duracaoConsulta || 30,
+    const janelasClinica: JanelaExpediente[] = expedienteClinica.length
+      ? expedienteClinica.map((item) => ({
+          inicio: item.horaInicio,
+          fim: item.horaFim,
+          step: item.duracaoConsulta || 30,
         }))
-      : this.janelasPadrao(dia);
+      : janelasPadrao(diaSemana);
 
+    const janelasProf: JanelaExpediente[] = agendasProf.map((agenda) => ({
+      inicio: agenda.horaInicio,
+      fim: agenda.horaFim,
+      step: agenda.duracaoConsulta || 30,
+    }));
+
+    // Clínica define a base; profissional restringe (interseção). Sem expediente do médico = usa o da clínica.
+    const janelas = intersectListas(janelasClinica, janelasProf);
     const step = janelas[0]?.step || 30;
+
     const consultas = await this.prisma.consultas.findMany({
       where: {
         profissionalId,
@@ -332,35 +370,12 @@ export class PortalService {
       },
     });
 
-    const slots: string[] = [];
-    for (const janela of janelas) {
-      let cursor = this.minutos(janela.inicio);
-      const limite = this.minutos(janela.fim);
-      const intervalo = janela.step > 0 ? janela.step : 30;
-      while (cursor + intervalo <= limite) {
-        const hora = this.horaFromMinutos(cursor);
-        const quando = this.combinar(this.formatData(dia), hora);
-        const ocupado = consultas.some((consulta) => {
-          const ini = consulta.dataHora.getTime();
-          const end = ini + step * 60 * 1000;
-          const slotEnd = quando.getTime() + intervalo * 60 * 1000;
-          return quando.getTime() < end && slotEnd > ini;
-        });
-        if (!ocupado && quando.getTime() > Date.now()) {
-          slots.push(hora);
-        }
-        cursor += intervalo;
-      }
-    }
+    const ocupados = consultas.map((consulta) => ({
+      inicio: consulta.dataHora.getTime(),
+      fim: consulta.dataHora.getTime() + step * 60 * 1000,
+    }));
 
-    return slots;
-  }
-
-  private janelasPadrao(dia: Date): Janela[] {
-    const semana = dia.getDay();
-    if (semana === 0) return [];
-    if (semana === 6) return [{ inicio: '08:00', fim: '12:00', step: 30 }];
-    return [{ inicio: '08:00', fim: '18:00', step: 30 }];
+    return gerarSlots(janelas, dia, ocupados);
   }
 
   private toPublicConsulta(consulta: {

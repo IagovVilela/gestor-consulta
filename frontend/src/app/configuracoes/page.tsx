@@ -30,7 +30,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/components/ui/use-toast'
-import { Plus, Edit, Trash2, Users, Stethoscope, Building2, Upload, X, Link2 } from 'lucide-react'
+import { Plus, Edit, Trash2, Users, Stethoscope, Building2, Upload, X, Link2, Clock } from 'lucide-react'
+import {
+  ExpedienteEditor,
+  defaultExpedienteClinica,
+  fromApiExpediente,
+  toApiExpediente,
+  type ExpedienteItem,
+} from '@/components/expediente/ExpedienteEditor'
+import { canManageClinic } from '@/lib/permissions'
 import api from '@/lib/axios'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -202,6 +210,8 @@ export default function ConfiguracoesPage() {
     useState<Especialidade | null>(null)
   const [editingClinica, setEditingClinica] = useState<Clinica | null>(null)
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null)
+  const [expediente, setExpediente] = useState<ExpedienteItem[]>(defaultExpedienteClinica())
+  const [savingExpediente, setSavingExpediente] = useState(false)
   const { toast } = useToast()
   const { loadClinicas: loadClinicasFromContext, clinicas: clinicasFromContext } = useClinica()
 
@@ -526,6 +536,23 @@ export default function ConfiguracoesPage() {
       clearTimeout(timeout)
     }
   }, [user])
+
+  useEffect(() => {
+    if (!canManageClinic(user) || !user?.clinicaId) return
+    api
+      .get('/configuracoes/expediente')
+      .then((response) => {
+        setExpediente(
+          fromApiExpediente(
+            Array.isArray(response.data) ? response.data : [],
+            defaultExpedienteClinica(),
+          ),
+        )
+      })
+      .catch(() => {
+        setExpediente(defaultExpedienteClinica())
+      })
+  }, [user?.clinicaId, user?.role, user?.isClinicOwner])
 
   const onSubmitEspecialidade = async (data: EspecialidadeFormData) => {
     try {
@@ -1002,6 +1029,34 @@ export default function ConfiguracoesPage() {
   const isClinicOwner = user?.isClinicOwner === true
   // Dono da clínica gerencia secretárias; ADMIN do sistema gerencia usuários globais
   const canManageUsers = userIsAdmin || isClinicOwner
+  const canEditExpediente = canManageClinic(user)
+
+  const saveExpediente = async () => {
+    try {
+      setSavingExpediente(true)
+      const response = await api.put('/configuracoes/expediente', {
+        itens: toApiExpediente(expediente),
+      })
+      setExpediente(
+        fromApiExpediente(
+          Array.isArray(response.data) ? response.data : [],
+          defaultExpedienteClinica(),
+        ),
+      )
+      toast({
+        title: 'Sucesso',
+        description: 'Expediente da clínica salvo com sucesso',
+      })
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.response?.data?.message || 'Erro ao salvar expediente',
+        variant: 'destructive',
+      })
+    } finally {
+      setSavingExpediente(false)
+    }
+  }
 
   return (
     <MainLayout>
@@ -1050,6 +1105,12 @@ export default function ConfiguracoesPage() {
               <TabsTrigger value="usuarios">
                 <Users className="mr-2 h-4 w-4" />
                 {isMedico ? 'Secretárias' : 'Usuários'}
+              </TabsTrigger>
+            )}
+            {canEditExpediente && !userIsAdmin && (
+              <TabsTrigger value="expediente">
+                <Clock className="mr-2 h-4 w-4" />
+                Expediente
               </TabsTrigger>
             )}
             {userIsAdmin && clinica && (
@@ -1190,6 +1251,27 @@ export default function ConfiguracoesPage() {
                     </div>
                     <Button type="submit">Salvar Personalização</Button>
                   </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {canEditExpediente && !userIsAdmin && (
+            <TabsContent value="expediente" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Expediente da clínica</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ExpedienteEditor
+                    value={expediente}
+                    onChange={setExpediente}
+                    title="Horário de funcionamento"
+                    description="Define quando a clínica atende. Os profissionais só podem oferecer horários dentro deste expediente."
+                  />
+                  <Button onClick={saveExpediente} disabled={savingExpediente}>
+                    {savingExpediente ? 'Salvando...' : 'Salvar expediente'}
+                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>
