@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './common/prisma/prisma.module';
+import { SlotsModule } from './common/services/slots.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AgendaModule } from './modules/agenda/agenda.module';
@@ -22,6 +23,7 @@ import { HealthController } from './health.controller';
       envFilePath: '.env',
     }),
     PrismaModule,
+    SlotsModule,
     AuthModule,
     DashboardModule,
     AgendaModule,

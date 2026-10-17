@@ -37,13 +37,13 @@ const consultaSchema = z.object({
   pacienteId: z.string().min(1, 'Paciente é obrigatório'),
   profissionalId: z.string().min(1, 'Profissional é obrigatório'),
   clinicaId: z.string().min(1, 'Clínica é obrigatória'),
-  dataHora: z.string().min(1, 'Data e hora são obrigatórias'),
+  data: z.string().min(1, 'Data é obrigatória'),
+  hora: z.string().min(1, 'Selecione um horário do expediente'),
   observacoes: z.string().optional(),
   valor: z.number().optional(),
   porConvenio: z.boolean().optional().default(false),
   nomeConvenio: z.string().optional(),
 }).refine((data) => {
-  // Se for por convênio, nomeConvenio é obrigatório
   if (data.porConvenio && !data.nomeConvenio?.trim()) {
     return false;
   }
@@ -148,6 +148,8 @@ export default function AgendaPage() {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
   const [selectedConsulta, setSelectedConsulta] = useState<Consulta | null>(null)
   const [currentWeek, setCurrentWeek] = useState(new Date())
+  const [horariosDisponiveis, setHorariosDisponiveis] = useState<string[]>([])
+  const [loadingHorarios, setLoadingHorarios] = useState(false)
   const { toast } = useToast()
   const { user } = useAuthStore()
   const { selectedClinicaId, clinica } = useClinica()
@@ -165,8 +167,13 @@ export default function AgendaPage() {
       clinicaId: user?.role === 'ADMIN' 
         ? (selectedClinicaId || user?.clinicaId || '') 
         : (user?.clinicaId || ''),
+      data: '',
+      hora: '',
     },
   })
+
+  const profissionalIdWatch = watch('profissionalId')
+  const dataWatch = watch('data')
 
   const weekStart = startOfWeek(currentWeek, { locale: ptBR })
   const weekEnd = endOfWeek(currentWeek, { locale: ptBR })
@@ -258,6 +265,51 @@ export default function AgendaPage() {
     }
   }, [currentWeek, selectedClinicaId, user?.clinicaId, setValue])
 
+  useEffect(() => {
+    const loadHorarios = async () => {
+      if (!profissionalIdWatch || !dataWatch) {
+        setHorariosDisponiveis([])
+        return
+      }
+      try {
+        setLoadingHorarios(true)
+        const filterClinicaId =
+          user?.role === 'ADMIN'
+            ? selectedClinicaId || user?.clinicaId
+            : user?.clinicaId
+        const response = await api.get('/agenda/horarios', {
+          params: {
+            profissionalId: profissionalIdWatch,
+            data: dataWatch,
+            clinicaId: filterClinicaId || undefined,
+          },
+        })
+        const horarios = Array.isArray(response.data?.horarios)
+          ? response.data.horarios
+          : []
+        setHorariosDisponiveis(horarios)
+        const horaAtual = watch('hora')
+        if (horaAtual && !horarios.includes(horaAtual)) {
+          setValue('hora', '')
+        }
+      } catch (error) {
+        console.error('Erro ao carregar horários:', error)
+        setHorariosDisponiveis([])
+        setValue('hora', '')
+      } finally {
+        setLoadingHorarios(false)
+      }
+    }
+    loadHorarios()
+  }, [
+    profissionalIdWatch,
+    dataWatch,
+    selectedClinicaId,
+    user?.clinicaId,
+    user?.role,
+    setValue,
+  ])
+
   const onSubmit = async (data: ConsultaFormData) => {
     try {
       // Garantir que clinicaId está definido
@@ -265,13 +317,18 @@ export default function AgendaPage() {
       
       // Se for por convênio, valor deve ser 0
       const valorFinal = data.porConvenio ? 0 : data.valor
+      const [year, month, day] = data.data.split('-').map(Number)
+      const [hours, minutes] = data.hora.split(':').map(Number)
+      const dataHoraLocal = new Date(year, month - 1, day, hours, minutes, 0, 0)
       
       const response = await api.post('/agenda', {
-        ...data,
+        pacienteId: data.pacienteId,
+        profissionalId: data.profissionalId,
         clinicaId: clinicaId || '',
-        dataHora: new Date(data.dataHora).toISOString(),
+        observacoes: data.observacoes,
+        dataHora: dataHoraLocal.toISOString(),
         valor: valorFinal,
-        // Limpar nomeConvenio se não for por convênio
+        porConvenio: data.porConvenio,
         nomeConvenio: data.porConvenio ? data.nomeConvenio : undefined,
       })
       
@@ -304,18 +361,24 @@ export default function AgendaPage() {
   }
 
   const handleNewConsulta = (day: Date, hour: number) => {
-    const dateTime = new Date(day)
-    dateTime.setHours(hour, 0, 0, 0)
+    const filterClinicaId =
+      user?.role === 'ADMIN'
+        ? selectedClinicaId || user?.clinicaId || ''
+        : user?.clinicaId || ''
+    const dataStr = format(day, 'yyyy-MM-dd')
+    const horaStr = `${String(hour).padStart(2, '0')}:00`
     reset({
       pacienteId: '',
       profissionalId: '',
-      clinicaId: '1',
-      dataHora: dateTime.toISOString().slice(0, 16),
+      clinicaId: filterClinicaId,
+      data: dataStr,
+      hora: horaStr,
       observacoes: '',
       valor: undefined,
       porConvenio: false,
       nomeConvenio: '',
     })
+    setHorariosDisponiveis([])
     setIsDialogOpen(true)
   }
 
@@ -489,7 +552,10 @@ export default function AgendaPage() {
                   <Label htmlFor="profissionalId">Profissional *</Label>
                   <Select
                     value={watch('profissionalId')}
-                    onValueChange={(value) => setValue('profissionalId', value)}
+                    onValueChange={(value) => {
+                      setValue('profissionalId', value)
+                      setValue('hora', '')
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o profissional" />
@@ -509,17 +575,69 @@ export default function AgendaPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dataHora">Data e Hora *</Label>
+                  <Label htmlFor="data">Data *</Label>
                   <Input
-                    id="dataHora"
-                    type="datetime-local"
-                    {...register('dataHora')}
+                    id="data"
+                    type="date"
+                    {...register('data')}
+                    onChange={(e) => {
+                      setValue('data', e.target.value)
+                      setValue('hora', '')
+                    }}
                   />
-                  {errors.dataHora && (
+                  {errors.data && (
                     <p className="text-sm text-destructive">
-                      {errors.dataHora.message}
+                      {errors.data.message}
                     </p>
                   )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="hora">Horário *</Label>
+                  <Select
+                    value={watch('hora') || ''}
+                    onValueChange={(value) => setValue('hora', value)}
+                    disabled={
+                      !profissionalIdWatch ||
+                      !dataWatch ||
+                      loadingHorarios ||
+                      horariosDisponiveis.length === 0
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          !profissionalIdWatch || !dataWatch
+                            ? 'Selecione profissional e data'
+                            : loadingHorarios
+                              ? 'Carregando...'
+                              : horariosDisponiveis.length === 0
+                                ? 'Sem horários no expediente'
+                                : 'Selecione o horário'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {horariosDisponiveis.map((hora) => (
+                        <SelectItem key={hora} value={hora}>
+                          {hora}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.hora && (
+                    <p className="text-sm text-destructive">
+                      {errors.hora.message}
+                    </p>
+                  )}
+                  {profissionalIdWatch &&
+                    dataWatch &&
+                    !loadingHorarios &&
+                    horariosDisponiveis.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Nenhum horário livre neste dia (verifique o expediente
+                        da clínica e do profissional).
+                      </p>
+                    )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="valor">Valor (R$)</Label>

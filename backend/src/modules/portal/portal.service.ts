@@ -8,22 +8,17 @@ import { PortalTokenService, PortalTokenPayload } from './portal-token.service';
 import { AgendarDto } from './dto/agendar.dto';
 import { AcessarDto } from './dto/acessar.dto';
 import { AlterarConsultaDto } from './dto/alterar-consulta.dto';
-import {
-  gerarSlots,
-  intersectListas,
-  janelasPadrao,
-  JanelaExpediente,
-} from '../../common/utils/expediente';
+import { SlotsService } from '../../common/services/slots.service';
 import * as crypto from 'crypto';
 
 const STATUS_ABERTOS = ['AGENDADA', 'CONFIRMADA'] as const;
-const STATUS_LIVRES = ['CANCELADA', 'FALTA'] as const;
 
 @Injectable()
 export class PortalService {
   constructor(
     private prisma: PrismaService,
     private tokens: PortalTokenService,
+    private slots: SlotsService,
   ) {}
 
   async getClinica(slug: string) {
@@ -298,10 +293,6 @@ export class PortalService {
   }
 
   private async assertHorarioLivre(profissionalId: string, quando: Date, ignoreConsultaId?: string) {
-    if (quando.getTime() <= Date.now()) {
-      throw new BadRequestException('Escolha um horário futuro');
-    }
-
     const profissional = await this.prisma.profissionais.findUnique({
       where: { id: profissionalId },
       select: { clinicaId: true },
@@ -310,15 +301,22 @@ export class PortalService {
       throw new BadRequestException('Profissional inválido');
     }
 
-    const slots = await this.slotsDisponiveis(
-      profissional.clinicaId,
-      profissionalId,
-      quando,
-      ignoreConsultaId,
-    );
-    const hora = this.formatHora(quando);
-    if (!slots.includes(hora)) {
-      throw new BadRequestException('Horário indisponível');
+    try {
+      await this.slots.assertHorarioLivre(
+        profissional.clinicaId,
+        profissionalId,
+        quando,
+        ignoreConsultaId,
+      );
+    } catch (error: any) {
+      if (error instanceof BadRequestException) {
+        throw new BadRequestException(
+          error.message === 'Horário fora do expediente da clínica/profissional ou já ocupado'
+            ? 'Horário indisponível'
+            : error.message,
+        );
+      }
+      throw error;
     }
   }
 
@@ -328,62 +326,12 @@ export class PortalService {
     dia: Date,
     ignoreConsultaId?: string,
   ) {
-    const inicio = new Date(dia);
-    inicio.setHours(0, 0, 0, 0);
-    const fim = new Date(dia);
-    fim.setHours(23, 59, 59, 999);
-    const diaSemana = dia.getDay();
-
-    const [expedienteClinica, agendasProf, totalExpedienteClinica] =
-      await Promise.all([
-        this.prisma.clinica_expedientes.findMany({
-          where: { clinicaId, active: true, diaSemana },
-        }),
-        this.prisma.agendas.findMany({
-          where: { profissionalId, active: true, diaSemana },
-        }),
-        this.prisma.clinica_expedientes.count({
-          where: { clinicaId, active: true },
-        }),
-      ]);
-
-    // Se a clínica já configurou expediente, dia sem registro = fechado.
-    // Só usa o padrão quando ainda não há nenhum expediente cadastrado.
-    const janelasClinica: JanelaExpediente[] = expedienteClinica.length
-      ? expedienteClinica.map((item) => ({
-          inicio: item.horaInicio,
-          fim: item.horaFim,
-          step: item.duracaoConsulta || 30,
-        }))
-      : totalExpedienteClinica > 0
-        ? []
-        : janelasPadrao(diaSemana);
-
-    const janelasProf: JanelaExpediente[] = agendasProf.map((agenda) => ({
-      inicio: agenda.horaInicio,
-      fim: agenda.horaFim,
-      step: agenda.duracaoConsulta || 30,
-    }));
-
-    // Clínica define a base; profissional restringe (interseção). Sem expediente do médico = usa o da clínica.
-    const janelas = intersectListas(janelasClinica, janelasProf);
-    const step = janelas[0]?.step || 30;
-
-    const consultas = await this.prisma.consultas.findMany({
-      where: {
-        profissionalId,
-        dataHora: { gte: inicio, lte: fim },
-        status: { notIn: [...STATUS_LIVRES] },
-        ...(ignoreConsultaId ? { id: { not: ignoreConsultaId } } : {}),
-      },
-    });
-
-    const ocupados = consultas.map((consulta) => ({
-      inicio: consulta.dataHora.getTime(),
-      fim: consulta.dataHora.getTime() + step * 60 * 1000,
-    }));
-
-    return gerarSlots(janelas, dia, ocupados);
+    return this.slots.disponiveis(
+      clinicaId,
+      profissionalId,
+      dia,
+      ignoreConsultaId,
+    );
   }
 
   private toPublicConsulta(consulta: {

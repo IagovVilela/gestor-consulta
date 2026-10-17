@@ -79,6 +79,24 @@ export class AgendaController {
     return this.agendaService.reagendar(id, new Date(dataHora));
   }
 
+  @Get('horarios')
+  async getHorarios(
+    @Query('profissionalId') profissionalId: string,
+    @Query('data') data: string,
+    @Query('clinicaId') clinicaId?: string,
+    @CurrentUser() user?: any,
+  ) {
+    const filterClinicaId =
+      user?.role === 'ADMIN'
+        ? clinicaId || user?.clinicaId
+        : user?.clinicaId;
+    return this.agendaService.getHorarios(
+      profissionalId,
+      data,
+      filterClinicaId,
+    );
+  }
+
   @Get('disponibilidade')
   async getDisponibilidade(
     @Query('profissionalId') profissionalId: string,

@@ -1,12 +1,16 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { SlotsService } from '../../common/services/slots.service';
 import { CreateAgendaDto } from './dto/create-agenda.dto';
 import { UpdateAgendaDto } from './dto/update-agenda.dto';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class AgendaService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private slots: SlotsService,
+  ) {}
 
   async findAll(filters: {
     dataInicio?: Date;
@@ -80,29 +84,25 @@ export class AgendaService {
   }
 
   async create(createDto: CreateAgendaDto) {
-    // Verificar conflito de horário
-    const conflito = await this.prisma.consultas.findFirst({
-      where: {
-        profissionalId: createDto.profissionalId,
-        dataHora: createDto.dataHora,
-        status: {
-          notIn: ['CANCELADA', 'FALTA'],
-        },
-      },
-    });
+    const dataHora = new Date(createDto.dataHora);
+    const clinicaId = await this.resolveClinicaId(
+      createDto.clinicaId,
+      createDto.profissionalId,
+    );
 
-    if (conflito) {
-      throw new BadRequestException('Horário já está ocupado');
-    }
+    await this.slots.assertHorarioLivre(
+      clinicaId,
+      createDto.profissionalId,
+      dataHora,
+    );
 
     return this.prisma.consultas.create({
       data: {
         id: crypto.randomUUID(),
         ...createDto,
-        dataHora: new Date(createDto.dataHora),
-        // Se não for por convênio, garantir que nomeConvenio seja null
+        clinicaId,
+        dataHora,
         nomeConvenio: createDto.porConvenio ? createDto.nomeConvenio : null,
-        // Se for por convênio, garantir que valor seja 0
         valor: createDto.porConvenio ? 0 : createDto.valor,
         updatedAt: new Date(),
       } as any,
@@ -139,25 +139,19 @@ export class AgendaService {
   }
 
   async reagendar(id: string, novaDataHora: Date) {
-    // Verificar conflito
     const consulta = await this.prisma.consultas.findUnique({
       where: { id },
     });
-
-    const conflito = await this.prisma.consultas.findFirst({
-      where: {
-        profissionalId: consulta.profissionalId,
-        dataHora: novaDataHora,
-        id: { not: id },
-        status: {
-          notIn: ['CANCELADA', 'FALTA'],
-        },
-      },
-    });
-
-    if (conflito) {
-      throw new BadRequestException('Horário já está ocupado');
+    if (!consulta) {
+      throw new BadRequestException('Consulta não encontrada');
     }
+
+    await this.slots.assertHorarioLivre(
+      consulta.clinicaId,
+      consulta.profissionalId,
+      novaDataHora,
+      id,
+    );
 
     return this.prisma.consultas.update({
       where: { id },
@@ -165,27 +159,57 @@ export class AgendaService {
     });
   }
 
+  async getHorarios(profissionalId: string, data: string, clinicaId?: string) {
+    if (!profissionalId || !data) {
+      throw new BadRequestException('profissionalId e data são obrigatórios');
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+      throw new BadRequestException('Data inválida. Use YYYY-MM-DD');
+    }
+
+    const resolvedClinicaId = await this.resolveClinicaId(
+      clinicaId,
+      profissionalId,
+    );
+    const [year, month, day] = data.split('-').map(Number);
+    const dia = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const horarios = await this.slots.disponiveis(
+      resolvedClinicaId,
+      profissionalId,
+      dia,
+    );
+    return { horarios };
+  }
+
+  /** @deprecated use getHorarios — mantido para compatibilidade */
   async getDisponibilidade(profissionalId: string, data: Date) {
-    const inicio = new Date(data);
-    inicio.setHours(0, 0, 0, 0);
-    const fim = new Date(data);
-    fim.setHours(23, 59, 59, 999);
-
-    const consultas = await this.prisma.consultas.findMany({
-      where: {
-        profissionalId,
-        dataHora: {
-          gte: inicio,
-          lte: fim,
-        },
-        status: {
-          notIn: ['CANCELADA', 'FALTA'],
-        },
-      },
+    const profissional = await this.prisma.profissionais.findUnique({
+      where: { id: profissionalId },
+      select: { clinicaId: true },
     });
+    if (!profissional) {
+      throw new BadRequestException('Profissional inválido');
+    }
+    return this.slots.disponiveis(
+      profissional.clinicaId,
+      profissionalId,
+      data,
+    );
+  }
 
-    // Retornar horários ocupados
-    return consultas.map((c) => c.dataHora);
+  private async resolveClinicaId(
+    clinicaId: string | undefined,
+    profissionalId: string,
+  ) {
+    if (clinicaId) return clinicaId;
+    const profissional = await this.prisma.profissionais.findUnique({
+      where: { id: profissionalId },
+      select: { clinicaId: true },
+    });
+    if (!profissional?.clinicaId) {
+      throw new BadRequestException('Clínica do profissional não encontrada');
+    }
+    return profissional.clinicaId;
   }
 }
 
