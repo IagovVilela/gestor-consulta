@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ProductLogo } from '@/components/brand/ProductLogo'
+import { PRODUCT } from '@/lib/company'
 import { useAuthStore } from '@/lib/store/auth-store'
 import api from '@/lib/axios'
 
@@ -117,11 +119,16 @@ export function LoginForm() {
 
   return (
     <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Login</CardTitle>
-        <CardDescription>
-          Entre com suas credenciais para acessar o sistema
-        </CardDescription>
+      <CardHeader className="space-y-4">
+        <div className="flex justify-center">
+          <ProductLogo variant="full" priority className="h-[4.5rem]" />
+        </div>
+        <div className="space-y-1.5 text-center">
+          <CardTitle>Entrar no {PRODUCT.name}</CardTitle>
+          <CardDescription>
+            Entre com suas credenciais para acessar o sistema
+          </CardDescription>
+        </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

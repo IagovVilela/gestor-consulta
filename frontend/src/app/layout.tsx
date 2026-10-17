@@ -8,8 +8,12 @@ import { GlobalLoadingBar } from '@/components/loading/GlobalLoadingBar'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Gestor de Consultas Médicas',
+  title: 'Gestor Consulta',
   description: 'Sistema de gerenciamento de consultas médicas — Energon Technology Solutions',
+  icons: {
+    icon: '/brand/gestor-consulta-icon.png',
+    apple: '/brand/gestor-consulta-icon.png',
+  },
 }
 
 export default function RootLayout({

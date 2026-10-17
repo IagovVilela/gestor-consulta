@@ -10,8 +10,8 @@ import {
   ArrowLeftRight,
 } from 'lucide-react'
 import { useAuthStore } from '@/lib/store/auth-store'
-import { COMPANY } from '@/lib/company'
-import Image from 'next/image'
+import { COMPANY, PRODUCT } from '@/lib/company'
+import { ProductLogo } from '@/components/brand/ProductLogo'
 
 const menuItems = [
   { href: '/admin', label: 'Panorama', icon: LayoutDashboard, exact: true },
@@ -25,16 +25,10 @@ export function AdminSidebar() {
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-slate-950 text-slate-100">
       <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
-        <Image
-          src={COMPANY.logoSrc}
-          alt={COMPANY.name}
-          width={36}
-          height={36}
-          className="rounded-full"
-        />
+        <ProductLogo variant="icon" className="h-9 w-9" />
         <div className="leading-tight">
           <p className="text-sm font-bold">Painel do Dono</p>
-          <p className="text-[11px] text-slate-400">{COMPANY.shortName}</p>
+          <p className="text-[11px] text-slate-400">{PRODUCT.shortName}</p>
         </div>
       </div>
 

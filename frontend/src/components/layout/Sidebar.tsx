@@ -18,7 +18,7 @@ import {
 import { useAuthStore } from '@/lib/store/auth-store'
 import { useClinica } from '@/contexts/clinica-context'
 import { ClinicaLogo } from '@/components/clinica/ClinicaLogo'
-import { COMPANY } from '@/lib/company'
+import { COMPANY, PRODUCT } from '@/lib/company'
 import {
   canAccessSystemAdmin,
   canManageProfessionals,
@@ -58,7 +58,7 @@ export function Sidebar() {
         <ClinicaLogo className="h-10 w-10" />
         <div className="flex flex-col">
           <h1 className="text-sm font-bold leading-tight">
-            {shouldShowClinica ? clinica.nome : 'Gestor Consultas'}
+            {shouldShowClinica ? clinica.nome : PRODUCT.name}
           </h1>
           {shouldShowClinica && (
             <span className="text-xs text-muted-foreground">Sistema</span>
