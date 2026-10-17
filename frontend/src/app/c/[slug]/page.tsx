@@ -7,9 +7,11 @@ import { ptBR } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { MaskedInput } from '@/components/ui/masked-input'
 import { Label } from '@/components/ui/label'
 import portalApi, { portalErrorMessage } from '@/lib/portal-api'
 import { COMPANY } from '@/lib/company'
+import { formatCPF, formatPhone } from '@/lib/masks'
 
 interface Profissional {
   id: string
@@ -162,7 +164,7 @@ export default function PortalPacientePage() {
         nome: nome.trim(),
         cpf: onlyDigits(cpf),
         dataNascimento: nascimento,
-        telefone: telefone.trim(),
+        telefone: onlyDigits(telefone),
         email: email.trim() || undefined,
         profissionalId,
         data,
@@ -274,7 +276,9 @@ export default function PortalPacientePage() {
           <p className="text-sm text-muted-foreground">Agendamento online</p>
           <h1 className="text-3xl font-bold">{clinica.nome}</h1>
           {clinica.endereco && <p className="text-sm text-muted-foreground">{clinica.endereco}</p>}
-          {clinica.telefone && <p className="text-sm text-muted-foreground">{clinica.telefone}</p>}
+          {clinica.telefone && (
+            <p className="text-sm text-muted-foreground">{formatPhone(clinica.telefone)}</p>
+          )}
         </header>
 
         <div className="grid grid-cols-2 gap-2">
@@ -338,7 +342,13 @@ export default function PortalPacientePage() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label>CPF</Label>
-                      <Input inputMode="numeric" value={cpf} onChange={(event) => setCpf(event.target.value)} required />
+                      <MaskedInput
+                        mask="cpf"
+                        value={cpf}
+                        onChange={(event) => setCpf(event.target.value)}
+                        placeholder="000.000.000-00"
+                        required
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Nascimento</Label>
@@ -348,7 +358,13 @@ export default function PortalPacientePage() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label>Telefone</Label>
-                      <Input value={telefone} onChange={(event) => setTelefone(event.target.value)} required />
+                      <MaskedInput
+                        mask="phone"
+                        value={telefone}
+                        onChange={(event) => setTelefone(event.target.value)}
+                        placeholder="(00) 00000-0000"
+                        required
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Email</Label>
@@ -382,7 +398,13 @@ export default function PortalPacientePage() {
                 <form className="space-y-4" onSubmit={acessar}>
                   <div className="space-y-2">
                     <Label>CPF</Label>
-                    <Input inputMode="numeric" value={acessoCpf} onChange={(event) => setAcessoCpf(event.target.value)} required />
+                    <MaskedInput
+                      mask="cpf"
+                      value={acessoCpf}
+                      onChange={(event) => setAcessoCpf(event.target.value)}
+                      placeholder="000.000.000-00"
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Data de nascimento</Label>

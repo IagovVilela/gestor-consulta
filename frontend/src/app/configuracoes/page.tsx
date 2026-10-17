@@ -53,7 +53,8 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs'
 import { Palette } from 'lucide-react'
-import { maskCNPJ, maskPhone, unmaskCNPJ, unmaskPhone } from '@/lib/utils/masks'
+import { formatCNPJ, formatPhone, unformatCNPJ, unformatPhone } from '@/lib/masks'
+import { MaskedInput } from '@/components/ui/masked-input'
 import { normalizeMediaUrl } from '@/lib/media'
 import { useRef } from 'react'
 
@@ -687,13 +688,13 @@ export default function ConfiguracoesPage() {
 
       // Adicionar apenas campos não vazios
       if (data.cnpj && data.cnpj.trim() !== '') {
-        cleanData.cnpj = unmaskCNPJ(data.cnpj)
+        cleanData.cnpj = unformatCNPJ(data.cnpj)
       }
       if (data.endereco && data.endereco.trim() !== '') {
         cleanData.endereco = data.endereco
       }
       if (data.telefone && data.telefone.trim() !== '') {
-        cleanData.telefone = unmaskPhone(data.telefone)
+        cleanData.telefone = unformatPhone(data.telefone)
       }
       if (data.email && data.email.trim() !== '') {
         cleanData.email = data.email
@@ -758,13 +759,13 @@ export default function ConfiguracoesPage() {
 
       // Adicionar apenas campos não vazios
       if (data.cnpj && data.cnpj.trim() !== '') {
-        cleanData.cnpj = unmaskCNPJ(data.cnpj)
+        cleanData.cnpj = unformatCNPJ(data.cnpj)
       }
       if (data.endereco && data.endereco.trim() !== '') {
         cleanData.endereco = data.endereco
       }
       if (data.telefone && data.telefone.trim() !== '') {
-        cleanData.telefone = unmaskPhone(data.telefone)
+        cleanData.telefone = unformatPhone(data.telefone)
       }
       if (data.email && data.email.trim() !== '') {
         cleanData.email = data.email
@@ -862,9 +863,9 @@ export default function ConfiguracoesPage() {
       setEditingClinica(clinicaCompleta)
       resetClinica({
         nome: clinicaCompleta.nome,
-        cnpj: clinicaCompleta.cnpj || '',
+        cnpj: clinicaCompleta.cnpj ? formatCNPJ(clinicaCompleta.cnpj) : '',
         endereco: clinicaCompleta.endereco || '',
-        telefone: clinicaCompleta.telefone || '',
+        telefone: clinicaCompleta.telefone ? formatPhone(clinicaCompleta.telefone) : '',
         email: clinicaCompleta.email || '',
         logoUrl: normalizeMediaUrl(clinicaCompleta.logoUrl) || '',
         corPrimaria: clinicaCompleta.corPrimaria || '',
@@ -1386,8 +1387,8 @@ export default function ConfiguracoesPage() {
                             <TableCell className="font-medium">
                               {c.nome}
                             </TableCell>
-                            <TableCell>{c.cnpj || '-'}</TableCell>
-                            <TableCell>{c.telefone || '-'}</TableCell>
+                            <TableCell>{c.cnpj ? formatCNPJ(c.cnpj) : '-'}</TableCell>
+                            <TableCell>{c.telefone ? formatPhone(c.telefone) : '-'}</TableCell>
                             <TableCell>{c.email || '-'}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
@@ -1737,36 +1738,36 @@ export default function ConfiguracoesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="clinica-cnpj">CNPJ</Label>
-                    <Input
+                    <MaskedInput
                       id="clinica-cnpj"
-                      {...(editingClinica ? registerClinica('cnpj') : registerClinicaCompleto('cnpj'))}
+                      mask="cnpj"
                       placeholder="00.000.000/0000-00"
+                      {...(editingClinica ? registerClinica('cnpj') : registerClinicaCompleto('cnpj'))}
+                      value={(editingClinica ? watchClinica('cnpj') : watchClinicaCompleto('cnpj')) || ''}
                       onChange={(e) => {
-                        const masked = maskCNPJ(e.target.value)
                         if (editingClinica) {
-                          setValueClinica('cnpj', masked)
+                          setValueClinica('cnpj', e.target.value, { shouldDirty: true })
                         } else {
-                          setValueClinicaCompleto('cnpj', masked)
+                          setValueClinicaCompleto('cnpj', e.target.value, { shouldDirty: true })
                         }
                       }}
-                      value={(editingClinica ? watchClinica('cnpj') : watchClinicaCompleto('cnpj')) || ''}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="clinica-telefone">Telefone</Label>
-                    <Input
+                    <MaskedInput
                       id="clinica-telefone"
-                      {...(editingClinica ? registerClinica('telefone') : registerClinicaCompleto('telefone'))}
+                      mask="phone"
                       placeholder="(00) 00000-0000"
+                      {...(editingClinica ? registerClinica('telefone') : registerClinicaCompleto('telefone'))}
+                      value={(editingClinica ? watchClinica('telefone') : watchClinicaCompleto('telefone')) || ''}
                       onChange={(e) => {
-                        const masked = maskPhone(e.target.value)
                         if (editingClinica) {
-                          setValueClinica('telefone', masked)
+                          setValueClinica('telefone', e.target.value, { shouldDirty: true })
                         } else {
-                          setValueClinicaCompleto('telefone', masked)
+                          setValueClinicaCompleto('telefone', e.target.value, { shouldDirty: true })
                         }
                       }}
-                      value={(editingClinica ? watchClinica('telefone') : watchClinicaCompleto('telefone')) || ''}
                     />
                   </div>
                 </div>

@@ -781,8 +781,9 @@ export default function ProfissionaisPage() {
                       id="crm"
                       mask="crm"
                       {...register('crm')}
+                      value={watch('crm') || ''}
+                      onChange={(e) => setValue('crm', e.target.value, { shouldDirty: true })}
                       placeholder="000000 ou 000000-XX/UF"
-                      maxLength={15}
                     />
                   </div>
                   <div className="space-y-2">
@@ -791,8 +792,9 @@ export default function ProfissionaisPage() {
                       id="telefone"
                       mask="phone"
                       {...register('telefone')}
+                      value={watch('telefone') || ''}
+                      onChange={(e) => setValue('telefone', e.target.value, { shouldDirty: true })}
                       placeholder="(00) 00000-0000"
-                      maxLength={15}
                     />
                   </div>
                 </div>
@@ -961,8 +963,11 @@ export default function ProfissionaisPage() {
                       id="crm"
                       mask="crm"
                       {...registerCompleto('crm')}
+                      value={watchCompleto('crm') || ''}
+                      onChange={(e) =>
+                        setValueCompleto('crm', e.target.value, { shouldDirty: true })
+                      }
                       placeholder="000000 ou 000000-XX/UF"
-                      maxLength={15}
                     />
                   </div>
                   <div className="space-y-2">
@@ -971,8 +976,11 @@ export default function ProfissionaisPage() {
                       id="telefone"
                       mask="phone"
                       {...registerCompleto('telefone')}
+                      value={watchCompleto('telefone') || ''}
+                      onChange={(e) =>
+                        setValueCompleto('telefone', e.target.value, { shouldDirty: true })
+                      }
                       placeholder="(00) 00000-0000"
-                      maxLength={15}
                     />
                   </div>
                 </div>

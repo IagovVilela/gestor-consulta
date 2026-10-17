@@ -149,6 +149,27 @@ export function unformatCEP(value: string): string {
 }
 
 /**
+ * Formata CNPJ: 00.000.000/0000-00
+ */
+export function formatCNPJ(value: string): string {
+  const numbers = value.replace(/\D/g, '').slice(0, 14)
+  if (numbers.length <= 2) return numbers
+  if (numbers.length <= 5) return `${numbers.slice(0, 2)}.${numbers.slice(2)}`
+  if (numbers.length <= 8)
+    return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5)}`
+  if (numbers.length <= 12)
+    return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8)}`
+  return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8, 12)}-${numbers.slice(12)}`
+}
+
+/**
+ * Remove formatação do CNPJ
+ */
+export function unformatCNPJ(value: string): string {
+  return value.replace(/\D/g, '')
+}
+
+/**
  * Formata data: dd/mm/yyyy
  */
 export function formatDate(value: string): string {

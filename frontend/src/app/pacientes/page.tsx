@@ -491,8 +491,9 @@ export default function PacientesPage() {
                     id="cpf"
                     mask="cpf"
                     {...register('cpf')}
+                    value={watch('cpf') || ''}
+                    onChange={(e) => setValue('cpf', e.target.value, { shouldDirty: true })}
                     placeholder="000.000.000-00"
-                    maxLength={14}
                   />
                 </div>
                 <div className="space-y-2">
@@ -501,8 +502,9 @@ export default function PacientesPage() {
                     id="rg"
                     mask="rg"
                     {...register('rg')}
+                    value={watch('rg') || ''}
+                    onChange={(e) => setValue('rg', e.target.value, { shouldDirty: true })}
                     placeholder="00.000.000-0"
-                    maxLength={12}
                   />
                 </div>
                 <div className="space-y-2">
@@ -519,8 +521,9 @@ export default function PacientesPage() {
                     id="telefone"
                     mask="phone"
                     {...register('telefone')}
+                    value={watch('telefone') || ''}
+                    onChange={(e) => setValue('telefone', e.target.value, { shouldDirty: true })}
                     placeholder="(00) 00000-0000"
-                    maxLength={15}
                   />
                 </div>
                 <div className="space-y-2">

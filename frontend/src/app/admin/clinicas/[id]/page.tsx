@@ -18,6 +18,7 @@ import api from '@/lib/axios'
 import { useAuthStore } from '@/lib/store/auth-store'
 import { useClinicaStore } from '@/lib/store/clinica-store'
 import { ADMIN_BACKUP_KEY } from '@/components/admin/ImpersonationBanner'
+import { formatCNPJ, formatPhone } from '@/lib/masks'
 interface ClinicaDetalhe {
   id: string
   nome: string
@@ -149,7 +150,10 @@ export default function AdminClinicaDetailPage() {
           </Link>
           <h1 className="mt-2 text-3xl font-bold tracking-tight">{clinica.nome}</h1>
           <p className="text-muted-foreground">
-            {clinica.email || 'Sem email'} · {clinica.telefone || 'Sem telefone'}
+            {clinica.email || 'Sem email'}
+            {' · '}
+            {clinica.telefone ? formatPhone(clinica.telefone) : 'Sem telefone'}
+            {clinica.cnpj ? ` · ${formatCNPJ(clinica.cnpj)}` : ''}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
