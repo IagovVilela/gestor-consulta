@@ -185,15 +185,25 @@ export default function PacientesPage() {
     try {
       // Determinar clinicaId (usar do formulário ou do usuário)
       const clinicaId = data.clinicaId || (user?.role !== 'ADMIN' ? user?.clinicaId : undefined)
-      
-      // Remover formatação antes de enviar
+
+      // Campos opcionais vazios devem ir como undefined (não string vazia),
+      // senão o backend rejeita (ex.: dataNascimento '' falha IsDateString).
+      const optional = (value?: string) => {
+        const trimmed = value?.trim()
+        return trimmed ? trimmed : undefined
+      }
+
       const dataToSend = {
-        ...data,
-        clinicaId: clinicaId || '',
-        cpf: data.cpf ? unformatCPF(data.cpf) : undefined,
-        rg: data.rg ? unformatRG(data.rg) : undefined,
-        telefone: data.telefone ? unformatPhone(data.telefone) : undefined,
-        medicoPreferencialId: data.medicoPreferencialId || undefined,
+        nome: data.nome.trim(),
+        clinicaId: clinicaId || undefined,
+        cpf: data.cpf ? unformatCPF(data.cpf) || undefined : undefined,
+        rg: data.rg ? unformatRG(data.rg) || undefined : undefined,
+        telefone: data.telefone ? unformatPhone(data.telefone) || undefined : undefined,
+        dataNascimento: optional(data.dataNascimento),
+        email: optional(data.email),
+        endereco: optional(data.endereco),
+        observacoes: optional(data.observacoes),
+        medicoPreferencialId: optional(data.medicoPreferencialId),
       }
 
       if (editingPaciente) {
@@ -214,9 +224,13 @@ export default function PacientesPage() {
       setEditingPaciente(null)
       loadPacientes()
     } catch (error: any) {
+      const apiMessage = error.response?.data?.message
+      const description = Array.isArray(apiMessage)
+        ? apiMessage.join(', ')
+        : apiMessage || 'Erro ao salvar paciente'
       toast({
         title: 'Erro',
-        description: error.response?.data?.message || 'Erro ao salvar paciente',
+        description,
         variant: 'destructive',
       })
     }
